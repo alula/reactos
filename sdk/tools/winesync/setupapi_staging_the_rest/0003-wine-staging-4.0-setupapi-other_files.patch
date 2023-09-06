@@ -1,0 +1,70 @@
+From 1eff1079dc61e13f1646ad2df3704285831e9de1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Herm=C3=A8s=20B=C3=A9lusca-Ma=C3=AFto?=
+ <hermes.belusca-maito@reactos.org>
+Date: Wed, 6 Sep 2023 22:00:29 +0200
+Subject: [PATCH 3/3] wine-staging 4.0 setupapi other_files
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Hermès Bélusca-Maïto <hermes.belusca-maito@reactos.org>
+---
+ sdk/include/psdk/cfgmgr32.h | 20 ++++++++++++++++++++
+ sdk/include/psdk/setupapi.h |  3 +++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/sdk/include/psdk/cfgmgr32.h b/sdk/include/psdk/cfgmgr32.h
+index b8def604aa7..97564a02a53 100644
+--- a/sdk/include/psdk/cfgmgr32.h
++++ b/sdk/include/psdk/cfgmgr32.h
+@@ -175,6 +175,23 @@ typedef CHAR *DEVNODEID_A, *DEVINSTID_A;
+ typedef WCHAR *DEVNODEID_W, *DEVINSTID_W;
+ typedef ULONG REGDISPOSITION;
+ 
++typedef enum _PNP_VETO_TYPE
++{
++    PNP_VetoTypeUnknown,
++    PNP_VetoLegacyDevice,
++    PNP_VetoPendingClose,
++    PNP_VetoWindowsApp,
++    PNP_VetoWindowsService,
++    PNP_VetoOutstandingOpen,
++    PNP_VetoDevice,
++    PNP_VetoDriver,
++    PNP_VetoIllegalDeviceRequest,
++    PNP_VetoInsufficientPower,
++    PNP_VetoNonDisableable,
++    PNP_VetoLegacyDriver,
++    PNP_VetoInsufficientRights
++} PNP_VETO_TYPE, *PPNP_VETO_TYPE;
++
+ DECL_WINELIB_CFGMGR32_TYPE_AW(DEVNODEID)
+ DECL_WINELIB_CFGMGR32_TYPE_AW(DEVINSTID)
+ 
+@@ -212,6 +229,9 @@ CMAPI CONFIGRET WINAPI CM_Locate_DevNodeW(PDEVINST,DEVINSTID_W,ULONG);
+ #define     CM_Locate_DevNode WINELIB_NAME_AW(CM_Locate_DevNode)
+ CMAPI CONFIGRET WINAPI CM_Open_DevNode_Key(DEVINST dnDevInst, REGSAM access, ULONG ulHardwareProfile,
+                                            REGDISPOSITION disposition, PHKEY phkDevice, ULONG ulFlags);
++CMAPI CONFIGRET WINAPI CM_Request_Device_EjectA(DEVINST dev, PPNP_VETO_TYPE type, LPSTR name, ULONG length, ULONG flags);
++CMAPI CONFIGRET WINAPI CM_Request_Device_EjectW(DEVINST dev, PPNP_VETO_TYPE type, LPWSTR name, ULONG length, ULONG flags);
++#define     CM_Request_Device_Eject WINELIB_NAME_AW(CM_Get_Device_ID_List_Ex)
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/sdk/include/psdk/setupapi.h b/sdk/include/psdk/setupapi.h
+index 76e255cc442..ceea64e9472 100644
+--- a/sdk/include/psdk/setupapi.h
++++ b/sdk/include/psdk/setupapi.h
+@@ -1415,6 +1415,9 @@ DWORD    WINAPI OpenAndMapForRead(PCWSTR, PDWORD, PHANDLE, PHANDLE, PVOID *);
+ LONG     WINAPI QueryRegistryValue(HKEY, PCWSTR, PBYTE *, PDWORD, PDWORD);
+ /* RetreiveFileSecurity is not a typo, as per Microsoft's dlls */
+ DWORD    WINAPI RetreiveFileSecurity(PCWSTR, PSECURITY_DESCRIPTOR *);
++BOOL     WINAPI SetupAddInstallSectionToDiskSpaceListA(HDSKSPC, HINF, HINF, PCSTR, PVOID, UINT);
++BOOL     WINAPI SetupAddInstallSectionToDiskSpaceListW(HDSKSPC, HINF, HINF, PCWSTR, PVOID, UINT);
++#define         SetupAddInstallSectionToDiskSpaceList WINELIB_NAME_AW(SetupAddInstallSectionToDiskSpaceList)
+ BOOL     WINAPI SetupAddSectionToDiskSpaceListA(HDSKSPC, HINF, HINF, PCSTR, UINT, PVOID, UINT);
+ BOOL     WINAPI SetupAddSectionToDiskSpaceListW(HDSKSPC, HINF, HINF, PCWSTR, UINT, PVOID, UINT);
+ #define         SetupAddSectionToDiskSpaceList WINELIB_NAME_AW(SetupAddSectionToDiskSpaceList)
+-- 
+2.36.1.windows.1
+
