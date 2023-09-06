@@ -366,8 +366,8 @@ class wine_sync:
                 print("THERE WERE SOME ISSUES WHEN APPLYING THE PATCH\n\n")
                 print(warning_message)
                 print("\n")
-                finished_sync = False
-                break
+                ##finished_sync = False
+                ##break
 
         # we're done without error
         if finished_sync:
