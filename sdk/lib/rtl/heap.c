@@ -2032,7 +2032,7 @@ RtlpAllocateNonDedicated(PHEAP Heap,
 
     /* Release the lock */
     if (HeapLocked) RtlLeaveHeapLock(Heap->LockVariable);
-    DPRINT1("HEAP: Allocation failed!\n");
+    DPRINT1("HEAP: Allocation failed!\n"); __debugbreak();
     DPRINT1("Flags %x\n", Heap->Flags);
     return NULL;
 }
