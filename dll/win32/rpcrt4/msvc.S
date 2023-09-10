@@ -62,9 +62,9 @@ FUNC call_stubless_func
     add rdx, [rcx + 8]       /* info->ProcFormatString + offset */
     mov rcx, [rcx]           /* info->pStubDesc */
 
-    movaps [rsp + 20h], xmm1
-    movaps [rsp + 28h], xmm2
-    movaps [rsp + 30h], xmm3
+    movsd qword ptr [rsp + 20h], xmm1
+    movsd qword ptr [rsp + 28h], xmm2
+    movsd qword ptr [rsp + 30h], xmm3
     lea r9, [rsp + 18h]      /* fpu_args */
     call ndr_client_call
     add rsp, 38h
