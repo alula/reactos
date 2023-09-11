@@ -1,6 +1,7 @@
 /*
  * SetupAPI DiskSpace functions
  *
+ * Copyright 2016 Michael Müller
  * Copyright 2004 CodeWeavers (Aric Stewart)
  *
  * This library is free software; you can redistribute it and/or
@@ -94,32 +95,58 @@ HDSKSPC WINAPI SetupCreateDiskSpaceListA(PVOID Reserved1, DWORD Reserved2, UINT 
 /***********************************************************************
  *		SetupDuplicateDiskSpaceListW  (SETUPAPI.@)
  */
-HDSKSPC WINAPI SetupDuplicateDiskSpaceListW(HDSKSPC DiskSpace, PVOID Reserved1, DWORD Reserved2, UINT Flags)
+HDSKSPC WINAPI SetupDuplicateDiskSpaceListW(HDSKSPC diskspace, PVOID reserved1, DWORD reserved2, UINT flags)
 {
-    DISKSPACELIST *list_copy, *list_original = DiskSpace;
+    struct space_list *list_copy, *list = diskspace;
+    struct file_entry *file, *file_copy;
 
-    if (Reserved1 || Reserved2 || Flags)
+    TRACE("(%p, %p, %lu, %u)\n", diskspace, reserved1, reserved2, flags);
+
+    if (reserved1 || reserved2 || flags)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return NULL;
     }
 
-    if (!DiskSpace)
+    if (!diskspace)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return NULL;
     }
 
-    list_copy = malloc(sizeof(DISKSPACELIST));
+    list_copy = malloc(sizeof(*list_copy));
     if (!list_copy)
     {
         SetLastError(ERROR_NOT_ENOUGH_MEMORY);
         return NULL;
     }
 
-    *list_copy = *list_original;
+    list_copy->flags = list->flags;
+    list_init(&list_copy->files);
+
+    LIST_FOR_EACH_ENTRY(file, &list->files, struct file_entry, entry)
+    {
+        file_copy = malloc(sizeof(*file_copy));
+        if (!file_copy) goto error;
+
+        file_copy->path = wcsdup(file->path);
+        if (!file_copy->path)
+        {
+            free(file_copy);
+            goto error;
+        }
+
+        file_copy->operation = file->operation;
+        file_copy->size = file->size;
+        list_add_head(&list_copy->files, &file->entry);
+    }
 
     return list_copy;
+
+error:
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    SetupDestroyDiskSpaceList(list_copy);
+    return NULL;
 }
 
 /***********************************************************************
@@ -144,55 +171,51 @@ BOOL WINAPI SetupAddInstallSectionToDiskSpaceListA(HDSKSPC DiskSpace,
 /***********************************************************************
 *		SetupQuerySpaceRequiredOnDriveW  (SETUPAPI.@)
 */
-BOOL WINAPI SetupQuerySpaceRequiredOnDriveW(HDSKSPC DiskSpace,
-                        LPCWSTR DriveSpec, LONGLONG *SpaceRequired,
-                        PVOID Reserved1, UINT Reserved2)
+BOOL WINAPI SetupQuerySpaceRequiredOnDriveW(HDSKSPC diskspace,
+                        LPCWSTR drivespec, LONGLONG *required,
+                        PVOID reserved1, UINT reserved2)
 {
-    WCHAR *driveW;
-    unsigned int i;
-    LPDISKSPACELIST list = DiskSpace;
-    BOOL rc = FALSE;
-    static const WCHAR bkslsh[]= {'\\',0};
+    struct space_list *list = diskspace;
+    struct file_entry *file;
+    LONGLONG sum = 0;
 
-    if (!DiskSpace)
+    TRACE("(%p, %s, %p, %p, %u)\n", diskspace, debugstr_w(drivespec), required, reserved1, reserved2);
+
+    if (!diskspace)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return FALSE;
     }
 
-    if (!DriveSpec)
+    if (!drivespec || !drivespec[0])
+    {
+        SetLastError(drivespec ? ERROR_INVALID_DRIVE : ERROR_INVALID_DRIVE);
+        return FALSE;
+    }
+
+    if (!required)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
     }
 
-    driveW = malloc((wcslen(DriveSpec) + 2) * sizeof(WCHAR));
-    if (!driveW)
+    if (towlower(drivespec[0]) < 'a' || towlower(drivespec[0]) > 'z' ||
+        drivespec[1] != ':' || drivespec[2] != 0)
     {
-        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        FIXME("UNC paths not yet supported (%s)\n", debugstr_w(drivespec));
+        SetLastError((GetVersion() & 0x80000000) ? ERROR_INVALID_DRIVE : ERROR_INVALID_PARAMETER);
         return FALSE;
     }
 
-    lstrcpyW(driveW,DriveSpec);
-    lstrcatW(driveW,bkslsh);
-
-    TRACE("Looking for drive %s\n",debugstr_w(driveW));
- 
-    for (i = 0; i < list->dwDriveCount; i++)
+    LIST_FOR_EACH_ENTRY(file, &list->files, struct file_entry, entry)
     {
-        TRACE("checking drive %s\n",debugstr_w(list->Drives[i].lpzName));
-        if (wcscmp(driveW,list->Drives[i].lpzName)==0)
-        {
-            rc = TRUE;
-            *SpaceRequired = list->Drives[i].dwWantedSpace;
-            break;
-        }
+        if (towlower(file->path[0]) == towlower(drivespec[0]) &&
+            file->path[1] == ':' && file->path[2] == '\\')
+            sum += file->size;
     }
 
-    free(driveW);
-
-    if (!rc) SetLastError(ERROR_INVALID_DRIVE);
-    return rc;
+    *required = sum;
+    return TRUE;
 }
 
 /***********************************************************************
