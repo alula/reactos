@@ -1413,6 +1413,13 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
             return FALSE;
         }
         source = inf_source;
+
+        if ((dest_dir = get_destination_dir( hinf, NULL )))
+        {
+            strcpyW( dest_path, dest_dir );
+            strcatW( dest_path, backslashW );
+            heap_free( dest_dir );
+        }
     }
     else if (!source)
     {
@@ -1439,7 +1446,9 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
     while (*source == '\\') source++;
     strcpyW( p, source );
 
-    ret = do_file_copyW( buffer, dest, style, handler, context );
+    strcatW( dest_path, dest );
+
+    ret = do_file_copyW( buffer, dest_path, style, handler, context );
 
     HeapFree( GetProcessHeap(), 0, inf_source );
     HeapFree( GetProcessHeap(), 0, buffer );
