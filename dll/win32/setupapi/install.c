@@ -385,7 +385,11 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
             if (flags & FLG_ADDREG_APPEND)
             {
                 if (!str) return TRUE;
-                append_multi_sz_value( hkey, value, str, size );
+                if (!append_multi_sz_value( hkey, value, str, size ))
+                {
+                    HeapFree( GetProcessHeap(), 0, str );
+                    return FALSE;
+                }
                 HeapFree( GetProcessHeap(), 0, str );
                 return TRUE;
             }
