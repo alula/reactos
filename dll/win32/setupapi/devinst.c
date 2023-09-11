@@ -6729,11 +6729,18 @@ BOOL WINAPI SetupDiInstallDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
     if (!wcsnicmp(device->instanceId, rootW, lstrlenW(rootW)) && svc_name[0]
             && (manager = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT)))
     {
-        if ((service = OpenServiceW(manager, svc_name, SERVICE_START)))
+        if ((service = OpenServiceW(manager, svc_name, SERVICE_START | SERVICE_USER_DEFINED_CONTROL)))
         {
+            SERVICE_STATUS status;
+
             if (!StartServiceW(service, 0, NULL) && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING)
             {
                 ERR("Failed to start service %s for device %s, error %u.\n",
+                        debugstr_w(svc_name), debugstr_w(device->instanceId), GetLastError());
+            }
+            if (!ControlService(service, SERVICE_CONTROL_REENUMERATE_ROOT_DEVICES, &status))
+            {
+                ERR("Failed to control service %s for device %s, error %u.\n",
                         debugstr_w(svc_name), debugstr_w(device->instanceId), GetLastError());
             }
             CloseServiceHandle(service);
