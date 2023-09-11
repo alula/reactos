@@ -794,7 +794,7 @@ fail:;
 DWORD WINAPI RetreiveFileSecurity(LPCWSTR lpFileName,
                                   PSECURITY_DESCRIPTOR *pSecurityDescriptor)
 {
-    PSECURITY_DESCRIPTOR SecDesc;
+    SECURITY_DESCRIPTOR *SecDesc, *NewSecDesc;
     DWORD dwSize = 0x100;
     DWORD dwError;
 
@@ -819,9 +819,13 @@ DWORD WINAPI RetreiveFileSecurity(LPCWSTR lpFileName,
         return dwError;
     }
 
-    SecDesc = MyRealloc(SecDesc, dwSize);
-    if (SecDesc == NULL)
+    NewSecDesc = MyRealloc(SecDesc, dwSize);
+    if (NewSecDesc == NULL)
+    {
+        MyFree(SecDesc);
         return ERROR_NOT_ENOUGH_MEMORY;
+    }
+    SecDesc = NewSecDesc;
 
     if (GetFileSecurityW(lpFileName, OWNER_SECURITY_INFORMATION |
                          GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
