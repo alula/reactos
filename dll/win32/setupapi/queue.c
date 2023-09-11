@@ -56,6 +56,7 @@ struct file_op_queue
 
 struct file_queue
 {
+    DWORD magic;
     struct file_op_queue copy_queue;
     struct file_op_queue delete_queue;
     struct file_op_queue rename_queue;
@@ -519,6 +520,7 @@ HSPFILEQ WINAPI SetupOpenFileQueue(void)
 
     if (!(queue = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*queue))))
         return INVALID_HANDLE_VALUE;
+    queue->magic = FILE_QUEUE_MAGIC;
     return queue;
 }
 
@@ -530,6 +532,14 @@ BOOL WINAPI SetupCloseFileQueue( HSPFILEQ handle )
 {
     struct file_queue *queue = handle;
     unsigned int i;
+
+    /* Windows XP DDK installer passes the handle returned from
+     * SetupInitDefaultQueueCallback() to this function. */
+    if (queue->magic != FILE_QUEUE_MAGIC)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
 
     free_file_op_queue( &queue->copy_queue );
     free_file_op_queue( &queue->rename_queue );
