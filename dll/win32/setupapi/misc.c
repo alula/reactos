@@ -1253,7 +1253,7 @@ BOOL WINAPI SetupUninstallOEMInfA( PCSTR inf_file, DWORD flags, PVOID reserved )
 
     if (inf_file && !(inf_fileW = strdupAtoW( inf_file ))) return FALSE;
     ret = SetupUninstallOEMInfW( inf_fileW, flags, reserved );
-    HeapFree( GetProcessHeap(), 0, inf_fileW );
+    free( inf_fileW );
     return ret;
 }
 
@@ -1428,7 +1428,7 @@ BOOL WINAPI SetupGetFileCompressionInfoExA( PCSTR source, PSTR name, DWORD len, 
     if (name)
     {
         ret = SetupGetFileCompressionInfoExW( sourceW, NULL, 0, &nb_chars, NULL, NULL, NULL );
-        if (!(nameW = HeapAlloc( GetProcessHeap(), 0, nb_chars * sizeof(WCHAR) )))
+        if (!(nameW = malloc( nb_chars * sizeof(WCHAR) )))
         {
             MyFree( sourceW );
             return FALSE;
@@ -1449,7 +1449,7 @@ BOOL WINAPI SetupGetFileCompressionInfoExA( PCSTR source, PSTR name, DWORD len, 
         }
     }
     if (required) *required = nb_chars;
-    HeapFree( GetProcessHeap(), 0, nameW );
+    free( nameW );
     MyFree( sourceW );
 
     return ret;
@@ -2136,7 +2136,7 @@ BOOL WINAPI SetupLogErrorW(LPCWSTR message, LogSeverity severity)
     if (message)
     {
         len = WideCharToMultiByte(CP_ACP, 0, message, -1, NULL, 0, NULL, NULL);
-        msg = HeapAlloc(GetProcessHeap(), 0, len);
+        msg = malloc(len);
         if (msg == NULL)
         {
             SetLastError(ERROR_NOT_ENOUGH_MEMORY);

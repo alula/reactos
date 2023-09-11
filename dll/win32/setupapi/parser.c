@@ -151,15 +151,12 @@ static void *grow_array( void *array, unsigned int *count, size_t elem )
     unsigned int new_count = *count + *count / 2;
     if (new_count < 32) new_count = 32;
 
-    if (array)
-	new_array = HeapReAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, array, new_count * elem );
-    else
-	new_array = HeapAlloc( GetProcessHeap(), HEAP_ZERO_MEMORY, new_count * elem );
+    new_array = _recalloc( array, new_count, elem );
 
     if (new_array)
         *count = new_count;
     else
-        HeapFree( GetProcessHeap(), 0, array );
+        free( array );
     return new_array;
 }
 
@@ -233,7 +230,7 @@ static struct line *add_line( struct inf_file *file, int section_index )
     if (section->nb_lines == section->alloc_lines)  /* need to grow the section */
     {
         int size = sizeof(*section) - sizeof(section->lines) + 2*section->alloc_lines*sizeof(*line);
-        if (!(section = HeapReAlloc( GetProcessHeap(), 0, section, size ))) return NULL;
+        if (!(section = realloc( section, size ))) return NULL;
         section->alloc_lines *= 2;
         file->sections[section_index] = section;
     }
@@ -898,12 +895,12 @@ static void free_inf_file( struct inf_file *file )
 {
     unsigned int i;
 
-    for (i = 0; i < file->nb_sections; i++) HeapFree( GetProcessHeap(), 0, file->sections[i] );
-    HeapFree( GetProcessHeap(), 0, file->filename );
-    HeapFree( GetProcessHeap(), 0, file->sections );
-    HeapFree( GetProcessHeap(), 0, file->fields );
+    for (i = 0; i < file->nb_sections; i++) free( file->sections[i] );
+    free( file->filename );
+    free( file->sections );
+    free( file->fields );
     HeapFree( GetProcessHeap(), 0, file->strings );
-    HeapFree( GetProcessHeap(), 0, file );
+    free( file );
 }
 
 
@@ -934,14 +931,12 @@ static DWORD parse_buffer( struct inf_file *file, const WCHAR *buffer, const WCH
     /* trim excess buffer space */
     if (file->alloc_sections > file->nb_sections)
     {
-        file->sections = HeapReAlloc( GetProcessHeap(), 0, file->sections,
-                                      file->nb_sections * sizeof(file->sections[0]) );
+        file->sections = realloc( file->sections, file->nb_sections * sizeof(file->sections[0]) );
         file->alloc_sections = file->nb_sections;
     }
     if (file->alloc_fields > file->nb_fields)
     {
-        file->fields = HeapReAlloc( GetProcessHeap(), 0, file->fields,
-                                    file->nb_fields * sizeof(file->fields[0]) );
+        file->fields = realloc( file->fields, file->nb_fields * sizeof(file->fields[0]) );
         file->alloc_fields = file->nb_fields;
     }
     file->strings = HeapReAlloc( GetProcessHeap(), HEAP_REALLOC_IN_PLACE_ONLY, file->strings,
@@ -1029,12 +1024,12 @@ static struct inf_file *parse_file( HANDLE handle, UINT *error_line, DWORD style
             offset = sizeof(utf8_bom);
         }
 
-        if ((new_buff = HeapAlloc( GetProcessHeap(), 0, size * sizeof(WCHAR) )))
+        if ((new_buff = malloc( size * sizeof(WCHAR) )))
         {
             DWORD len = MultiByteToWideChar( codepage, 0, (char *)buffer + offset,
                                              size - offset, new_buff, size );
             err = parse_buffer( file, new_buff, new_buff + len, error_line );
-            HeapFree( GetProcessHeap(), 0, new_buff );
+            free( new_buff );
         }
     }
     else
@@ -1104,7 +1099,7 @@ WCHAR *PARSER_get_dest_dir( INFCONTEXT *context )
     if (!SetupGetIntField( context, 1, &dirid )) return NULL;
     if (!(dir = get_dirid_subst( context->Inf, dirid, &len1 ))) return NULL;
     if (!SetupGetStringFieldW( context, 2, NULL, 0, &len2 )) len2 = 0;
-    if (!(ret = HeapAlloc( GetProcessHeap(), 0, (len1+len2+1) * sizeof(WCHAR) ))) return NULL;
+    if (!(ret = malloc( (len1 + len2 + 1) * sizeof(WCHAR) ))) return NULL;
     memcpy( ret, dir, len1 * sizeof(WCHAR) );
     ptr = ret + len1;
     if (len2 && ptr > ret && ptr[-1] != '\\') *ptr++ = '\\';
@@ -1238,7 +1233,7 @@ HINF WINAPI SetupOpenInfFileW( PCWSTR name, PCWSTR class, DWORD style, UINT *err
         static const WCHAR System32[] = {'\\','s','y','s','t','e','m','3','2','\\',0};
 
         len = GetWindowsDirectoryW( NULL, 0 ) + lstrlenW(name) + 12;
-        if (!(path = HeapAlloc( GetProcessHeap(), 0, len * sizeof(WCHAR) )))
+        if (!(path = malloc( len * sizeof(WCHAR) )))
         {
             SetLastError( ERROR_NOT_ENOUGH_MEMORY );
             return INVALID_HANDLE_VALUE;
@@ -1263,7 +1258,7 @@ HINF WINAPI SetupOpenInfFileW( PCWSTR name, PCWSTR class, DWORD style, UINT *err
     }
     if (!file)
     {
-        HeapFree( GetProcessHeap(), 0, path );
+        free( path );
         return INVALID_HANDLE_VALUE;
     }
     TRACE( "%s -> %p\n", debugstr_w(path), file );
@@ -1923,7 +1918,7 @@ BOOL WINAPI SetupGetIntField( PINFCONTEXT context, DWORD index, PINT result )
     if (!(ret = SetupGetStringFieldA( context, index, localbuff, sizeof(localbuff), &required )))
     {
         if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) return FALSE;
-        if (!(buffer = HeapAlloc( GetProcessHeap(), 0, required ))) return FALSE;
+        if (!(buffer = malloc( required ))) return FALSE;
         if (!(ret = SetupGetStringFieldA( context, index, buffer, required, NULL ))) goto done;
     }
     /* The call to SetupGetStringFieldA succeeded. If buffer is empty we have an optional field */
@@ -1940,7 +1935,7 @@ BOOL WINAPI SetupGetIntField( PINFCONTEXT context, DWORD index, PINT result )
     }
 
  done:
-    if (buffer != localbuff) HeapFree( GetProcessHeap(), 0, buffer );
+    if (buffer != localbuff) free( buffer );
     return ret;
 }
 

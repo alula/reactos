@@ -140,12 +140,12 @@ static WCHAR *get_field_string( INFCONTEXT *context, DWORD index, WCHAR *buffer,
     if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
     {
         /* now grow the buffer */
-        if (buffer != static_buffer) HeapFree( GetProcessHeap(), 0, buffer );
-        if (!(buffer = HeapAlloc( GetProcessHeap(), 0, required*sizeof(WCHAR) ))) return NULL;
+        if (buffer != static_buffer) free( buffer );
+        if (!(buffer = malloc( required * sizeof(WCHAR) ))) return NULL;
         *size = required;
         if (SetupGetStringFieldW( context, index, buffer, *size, &required )) return buffer;
     }
-    if (buffer != static_buffer) HeapFree( GetProcessHeap(), 0, buffer );
+    if (buffer != static_buffer) free( buffer );
     return NULL;
 }
 
@@ -316,7 +316,7 @@ static void delete_multi_sz_value( HKEY hkey, const WCHAR *value, const WCHAR *s
                         (BYTE *)(buffer + size), dst - (buffer + size) );
     }
  done:
-    HeapFree( GetProcessHeap(), 0, buffer );
+    free( buffer );
 }
 
 
@@ -338,10 +338,10 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
                 WCHAR *str;
 
                 if (!SetupGetStringFieldW( context, 5, NULL, 0, &size ) || !size) return TRUE;
-                if (!(str = HeapAlloc( GetProcessHeap(), 0, size * sizeof(WCHAR) ))) return FALSE;
+                if (!(str = malloc( size * sizeof(WCHAR) ))) return FALSE;
                 SetupGetStringFieldW( context, 5, str, size, NULL );
                 delete_multi_sz_value( hkey, value, str );
-                HeapFree( GetProcessHeap(), 0, str );
+                free( str );
             }
             else RegDeleteValueW( hkey, value );
         }
@@ -379,7 +379,7 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
             if (!SetupGetMultiSzFieldW( context, 5, NULL, 0, &size )) size = 0;
             if (size)
             {
-                if (!(str = HeapAlloc( GetProcessHeap(), 0, size * sizeof(WCHAR) ))) return FALSE;
+                if (!(str = malloc( size * sizeof(WCHAR) ))) return FALSE;
                 SetupGetMultiSzFieldW( context, 5, str, size, NULL );
             }
             if (flags & FLG_ADDREG_APPEND)
@@ -387,10 +387,10 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
                 if (!str) return TRUE;
                 if (!append_multi_sz_value( hkey, value, str, size ))
                 {
-                    HeapFree( GetProcessHeap(), 0, str );
+                    free( str );
                     return FALSE;
                 }
-                HeapFree( GetProcessHeap(), 0, str );
+                free( str );
                 return TRUE;
             }
             /* else fall through to normal string handling */
@@ -417,7 +417,7 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
             if (str) RegSetValueExW( hkey, value, 0, type, (BYTE *)str, size * sizeof(WCHAR) );
             else RegSetValueExW( hkey, value, 0, type, (const BYTE *)L"", sizeof(WCHAR) );
         }
-        HeapFree( GetProcessHeap(), 0, str );
+        free( str );
         return TRUE;
     }
     else  /* get the binary data */
@@ -427,12 +427,12 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
         if (!SetupGetBinaryField( context, 5, NULL, 0, &size )) size = 0;
         if (size)
         {
-            if (!(data = HeapAlloc( GetProcessHeap(), 0, size ))) return FALSE;
+            if (!(data = malloc( size ))) return FALSE;
             TRACE( "setting binary data %s len %ld\n", debugstr_w(value), size );
             SetupGetBinaryField( context, 5, data, size, NULL );
         }
         RegSetValueExW( hkey, value, 0, type, data, size );
-        HeapFree( GetProcessHeap(), 0, data );
+        free( data );
         return TRUE;
     }
 }
@@ -731,7 +731,7 @@ static BOOL register_dlls_callback( HINF hinf, PCWSTR field, void *arg )
         ret = do_register_dll( info, path, flags, timeout, args );
 
     done:
-        HeapFree( GetProcessHeap(), 0, path );
+        free( path );
         if (!ret) break;
     }
     return ret;
@@ -1220,7 +1220,7 @@ static BOOL iterate_section_fields( HINF hinf, PCWSTR section, PCWSTR key,
     }
     ret = TRUE;
  done:
-    if (buffer != static_buffer) HeapFree( GetProcessHeap(), 0, buffer );
+    if (buffer != static_buffer) free( buffer );
     return ret;
 }
 
