@@ -344,6 +344,52 @@ static void get_src_file_info( HINF hinf, struct file_op *op )
     if (!op->src_root) op->src_root = PARSER_get_src_root(hinf);
 }
 
+static void get_source_info( HINF hinf, const WCHAR *src_file, SP_FILE_COPY_PARAMS_W *params,
+                             WCHAR *src_root, WCHAR *src_path)
+{
+    static const WCHAR SourceDisksNames[] =
+        {'S','o','u','r','c','e','D','i','s','k','s','N','a','m','e','s',0};
+    static const WCHAR SourceDisksFiles[] =
+        {'S','o','u','r','c','e','D','i','s','k','s','F','i','l','e','s',0};
+
+    INFCONTEXT file_ctx, disk_ctx;
+    INT id, diskid;
+    DWORD len;
+
+    /* find the SourceDisksFiles entry */
+    if (!SetupFindFirstLineW( hinf, SourceDisksFiles, src_file, &file_ctx )) return;
+    if (!SetupGetIntField( &file_ctx, 1, &diskid )) return;
+
+    /* now find the diskid in the SourceDisksNames section */
+    if (!SetupFindFirstLineW( hinf, SourceDisksNames, NULL, &disk_ctx )) return;
+    for (;;)
+    {
+        if (SetupGetIntField( &disk_ctx, 0, &id ) && (id == diskid)) break;
+        if (!SetupFindNextLine( &disk_ctx, &disk_ctx )) return;
+    }
+
+    if (SetupGetStringFieldW( &disk_ctx, 1, NULL, 0, &len ) && len > sizeof(WCHAR)
+            && (params->SourceDescription = heap_alloc( len * sizeof(WCHAR) )))
+        SetupGetStringFieldW( &disk_ctx, 1, (WCHAR *)params->SourceDescription, len, NULL );
+
+    if (SetupGetStringFieldW( &disk_ctx, 2, NULL, 0, &len ) && len > sizeof(WCHAR)
+            && (params->SourceTagfile = heap_alloc( len * sizeof(WCHAR) )))
+        SetupGetStringFieldW( &disk_ctx, 2, (WCHAR *)params->SourceTagfile, len, NULL );
+
+    if (SetupGetStringFieldW( &disk_ctx, 4, NULL, 0, &len ) && len > sizeof(WCHAR)
+            && len < MAX_PATH - strlenW( src_root ) - 1)
+    {
+        strcatW( src_root, backslashW );
+        SetupGetStringFieldW( &disk_ctx, 4, src_root + strlenW( src_root ),
+                              MAX_PATH - strlenW( src_root ), NULL );
+    }
+
+    if (SetupGetStringFieldW( &file_ctx, 2, NULL, 0, &len ) && len > sizeof(WCHAR) && len < MAX_PATH)
+    {
+        SetupGetStringFieldW( &file_ctx, 2, src_path, MAX_PATH, NULL );
+        params->SourcePath = src_path;
+    }
+}
 
 /***********************************************************************
  *            get_destination_dir
