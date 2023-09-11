@@ -13,6 +13,14 @@
 #include <strings.h>
 #include <math.h>
 #include <float.h>
+#include <limits.h>
+#include <minmax.h>
+
+#if DBG
+#define assert(x) if (!(x)) __int2c();
+#else
+#define assert(x)
+#endif
 
 #ifdef _UNICODE
 # define streamout wstreamout
@@ -64,14 +72,424 @@ enum
     (flags & FLAG_SHORT) ? (unsigned short)va_arg(argptr, int) : \
     va_arg(argptr, unsigned int)
 
-#define va_arg_ffp(argptr, flags) \
-    (flags & FLAG_LONGDOUBLE) ? va_arg(argptr, long double) : \
-    va_arg(argptr, double)
-
-#define get_exp(f) (int)floor(f == 0 ? 0 : (f >= 0 ? log10(f) : log10(-f)))
 #define round(x) floor((x) + 0.5)
 
+static
+int
+streamout_char(FILE* stream, int chr)
+{
+#if !defined(_USER32_WSPRINTF)
+    if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
+        return 1;
+#endif
+#if defined(_USER32_WSPRINTF) || defined(_LIBCNT_)
+    /* Check if the buffer is full */
+    if (stream->_cnt < sizeof(TCHAR))
+        return 0;
+
+    *(TCHAR*)stream->_ptr = chr;
+    stream->_ptr += sizeof(TCHAR);
+    stream->_cnt -= sizeof(TCHAR);
+
+    return 1;
+#else
+    return _fputtc((TCHAR)chr, stream) != _TEOF;
+#endif
+}
+
+static
+int
+streamout_astring(FILE* stream, const char* string, size_t count)
+{
+    TCHAR chr;
+    int written = 0;
+
+#if !defined(_USER32_WSPRINTF)
+    if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
+        return (int)count;
+#endif
+
+    while (count--)
+    {
+#ifdef _UNICODE
+        int len;
+        if ((len = mbtowc(&chr, string, MB_CUR_MAX)) < 1) break;
+        string += len;
+#else
+        chr = *string++;
+#endif
+        if (streamout_char(stream, chr) == 0) return -1;
+        written++;
+    }
+
+    return written;
+}
+
+static
+int
+streamout_wstring(FILE* stream, const wchar_t* string, size_t count)
+{
+    wchar_t chr;
+    int written = 0;
+
+#if defined(_UNICODE) && !defined(_USER32_WSPRINTF)
+    if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
+        return (int)count;
+#endif
+
+    while (count--)
+    {
+#ifndef _UNICODE
+        char mbchar[MB_CUR_MAX], * ptr = mbchar;
+        int mblen;
+
+        mblen = wctomb(mbchar, *string++);
+        if (mblen <= 0) return written;
+
+        while (chr = *ptr++, mblen--)
+#else
+        chr = *string++;
+#endif
+        {
+            if (streamout_char(stream, chr) == 0) return -1;
+            written++;
+        }
+    }
+
+    return written;
+}
+
+#ifdef _UNICODE
+#define streamout_string streamout_wstring
+#else
+#define streamout_string streamout_astring
+#endif
+
 #ifndef _USER32_WSPRINTF
+
+// Base 2 exponent divided by 8 is base 16 exponent
+#define DBL_MAX_16_EXP (DBL_MAX_EXP / 8)
+
+// A double has 52 fraction bits, which is 14 hex digits
+#define DBL_DIG_HEX 14
+
+#define DBL_MAX_DIGITS_10 17
+#define DBL_MAX_DIGITS_16 14
+
+static
+int
+get_exponent(double fpval, int base)
+{
+    int exponent;
+
+    if (fpval == 0.)
+    {
+        exponent = 0;
+    }
+    else if (base == 10)
+    {
+        exponent = (int)floor(log10(fpval));
+        assert(exponent <= DBL_MAX_10_EXP);
+    }
+    else
+    {
+        exponent = (int)floor(log(fpval) / log(base));
+        assert(exponent <= DBL_MAX_16_EXP);
+    }
+
+    return exponent;
+}
+
+static
+int
+get_dbl_digits(
+    unsigned char buffer[DBL_MAX_DIGITS_10],
+    double fpval,
+    int base,
+    int exponent,
+    int num_digits)
+{
+    /* Only base 10 (dec) and 16 (hex) are valid */
+    assert((base == 10) || (base == 16));
+
+    /* fpval must be positive! */
+    assert(fpval >= 0.);
+
+    /* Must fit into the buffer */
+    assert(num_digits <= DBL_MAX_DIGITS_10);
+
+    /* Calculate how many digits we need to shift the decimal point */
+    const int shift_exp = max(exponent, 0);
+    const int shift = num_digits - shift_exp - 1;
+
+    /* Calculate the multiplier to turn the digits into an integer */
+    double multiplier = pow(base, shift);
+
+    /* Shift the decimal dot and round */
+    double fpval2 = round(fpval * multiplier);
+
+    /* Check if rounding up gave us one additional digit */
+    const double new_exp = get_exponent(fpval2, base);
+    if (new_exp > num_digits - 1)
+    {
+        /* Fix it up */
+        exponent += 1;
+        multiplier = pow(base, shift - 1);
+        fpval2 = round(fpval * multiplier);
+    }
+
+    /* Must fit into an __int64 */
+    assert(fpval2 <= (double)LLONG_MAX);
+
+    /* Calculate the integer value (rounded) */
+    __int64 int_val = (__int64)fpval2;
+
+    for (int i = num_digits - 1; i >= 0; i--)
+    {
+        /* Store the next digit */
+        buffer[i] = int_val % base;
+        int_val /= base;
+    }
+
+    assert((fpval < 1.) || (buffer[0] != 0));
+    assert(int_val == 0);
+
+    return exponent;
+}
+
+static
+int
+#ifdef _LIBCNT_
+/* Due to restrictions in kernel mode regarding the use of floating point,
+   we prevent it from being inlined */
+__declspec(noinline)
+#endif
+streamout_double(
+    FILE* stream,
+    char format,
+    double fpval,
+    unsigned int flags,
+    int width,
+    int precision)
+{
+    static const char _qnan[] = "#QNAN";
+    static const char _snan[] = "#SNAN";
+    static const char _infinity[] = "#INF";
+    const char* inv_str = 0;
+    static const TCHAR dig_chars_l[] = _T("0123456789abcdef0x");
+    static const TCHAR dig_chars_u[] = _T("0123456789ABCDEF0X");
+    const TCHAR* dig_chars = dig_chars_l;
+    unsigned char dig_buffer[DBL_MAX_DIGITS_10];
+    int base = 10;
+    int use_exp = 0;
+    char sign_char = 0;
+    int exponent;
+
+    /* Normalize the precision */
+    if (precision < 0) precision = 6;
+
+    /* Check for upper case digits to use */
+    if ((format == 'E') || (format == 'F') || (format == 'G') || (format == 'A'))
+    {
+        dig_chars = dig_chars_u;
+    }
+
+    /* Check for base 16 (hex) */
+    if ((format == 'A') || (format == 'a'))
+    {
+        base = 16;
+    }
+
+    /* Get sign and normalize fpval to absolute */
+    const unsigned __int64 fp_bits = *(unsigned __int64*)&fpval;
+    if (fp_bits & 0x8000000000000000ULL)
+    {
+        sign_char = '-';
+        fpval = -fpval;
+    }
+    else if (flags & FLAG_FORCE_SIGN)
+    {
+        sign_char = '+';
+    }
+    else if (flags & FLAG_FORCE_SIGNSP)
+    {
+        sign_char = ' ';
+    }
+
+    /* Handle NAN / INF */
+    if (_isnan(fpval))
+    {
+        if (fp_bits & 0x0008000000000000ULL)
+        {
+            inv_str = _qnan;
+        }
+        else
+        {
+            inv_str = _snan;
+        }
+        fpval = 1.;
+    }
+    else if (!_finite(fpval))
+    {
+        inv_str = _infinity;
+        fpval = 1.;
+    }
+
+    /* Calculate the exponent (i.e. digits before decimal point) */
+    exponent = get_exponent(fpval, base);
+
+    /* Calculate some widths */
+    const int width_sign = (sign_char != 0) ? 1 : 0;
+    const int width_dot = (precision > 0) ? 1 : 0;
+    const int width_exp = 5;
+
+    /* Calculate the number of digits to display with exponent and without */
+    const int digits_before_dot_no_exp = max(exponent + 1, 1);
+    const int digits_no_exp = digits_before_dot_no_exp + precision;
+    const int digits_with_exp = 1 + precision;
+
+    /* Calculate the width of the string with exponent and without */
+    const int width_no_exp = width_sign + digits_no_exp + width_dot;
+    const int width_with_exp = width_sign + digits_with_exp + width_dot + width_exp;
+
+    /* Check if we use the exponent format */
+    if ((format == 'g') || (format == 'G'))
+    {
+        use_exp = width_with_exp < width_no_exp;
+    }
+    else if ((format == 'f') || (format == 'F'))
+    {
+        use_exp = 0;
+    }
+    else
+    {
+        use_exp = 1;
+    }
+
+    const int num_digits = use_exp ? digits_with_exp : digits_no_exp;
+    const int actual_width = use_exp ? width_with_exp : width_no_exp;
+
+    /* Get max number of actual digits */
+    const int max_real_digits = (base == 16) ? DBL_MAX_DIGITS_16 : DBL_MAX_DIGITS_10;
+
+    /* Calculate the number of digits to return */
+    const int num_real_digits = min(num_digits, max_real_digits);
+
+    /* Get the digits (0 based) */
+    exponent = get_dbl_digits(dig_buffer, fpval, base, exponent, num_real_digits);
+
+    /* Output left space padding */
+    if (((flags & FLAG_ALIGN_LEFT) == 0) &&
+        ((flags & FLAG_PAD_ZERO) == 0) &&
+        (width > actual_width))
+    {
+        const int padding = width - actual_width;
+        for (int i = 0; i < padding; i++)
+        {
+            streamout_char(stream, ' ');
+        }
+    }
+
+    /* Output sign */
+    if (sign_char != 0)
+    {
+        streamout_char(stream, sign_char);
+    }
+
+    /* Output left 0 padding */
+    if (((flags & FLAG_ALIGN_LEFT) == 0) &&
+        ((flags & FLAG_PAD_ZERO) != 0) &&
+        (width > actual_width))
+    {
+        const int padding = width - actual_width;
+        for (int i = 0; i < padding; i++)
+        {
+            streamout_char(stream, '0');
+        }
+    }
+
+    int digits_before_dot;
+    int real_digits_before_dot;
+
+    if (use_exp)
+    {
+        /* One digit before the decimal dot */
+        digits_before_dot = 1;
+        real_digits_before_dot = 1;
+        streamout_char(stream, dig_chars[dig_buffer[0]]);
+    }
+    else
+    {
+        /* Output real digits before the decimal dot */
+        digits_before_dot = digits_before_dot_no_exp;
+        real_digits_before_dot = min(digits_before_dot, num_real_digits);
+        for (int i = 0; i < real_digits_before_dot; i++)
+        {
+            streamout_char(stream, dig_chars[dig_buffer[i]]);
+        }
+
+        /* Output optional right 0 padding */
+        const int right_padding = digits_before_dot - real_digits_before_dot;
+        for (int i = 0; i < right_padding; i++)
+        {
+            streamout_char(stream, '0');
+        }
+    }
+
+    /* Only output fraction digits, if precision is > 0 */
+    int real_digits_after_dot;
+    if (precision > 0)
+    {
+        /* Output the decimal dot */
+        streamout_char(stream, '.');
+
+        /* Check for invalid numbers */
+        if (inv_str != 0)
+        {
+            const int inv_str_len = (int)strlen(inv_str);
+            real_digits_after_dot = min(inv_str_len, precision);
+            for (int i = 0; i < real_digits_after_dot; i++)
+            {
+                streamout_char(stream, inv_str[i]);
+            }
+        }
+        else
+        {
+            /* Output remaining real digits */
+            for (int i = real_digits_before_dot; i < num_real_digits; i++)
+            {
+                streamout_char(stream, dig_chars[dig_buffer[i]]);
+            }
+
+            real_digits_after_dot = num_real_digits - real_digits_before_dot;
+        }
+
+        /* Pad right with '0' for additional precision */
+        const int right_padding = precision - real_digits_after_dot;
+        for (int i = 0; i < right_padding; i++)
+        {
+            streamout_char(stream, '0');
+        }
+    }
+
+    /* Output the exponent */
+    if (use_exp)
+    {
+        streamout_char(stream, dig_chars[0xe]);
+        streamout_char(stream, (exponent >= 0) ? '+' : '-');
+        exponent = (exponent < 0) ? -exponent : exponent;
+        assert(exponent < 1000);
+        streamout_char(stream, dig_chars[exponent / 100]);
+        exponent %= 100;
+        streamout_char(stream, dig_chars[exponent / 10]);
+        exponent %= 10;
+        streamout_char(stream, dig_chars[exponent]);
+    }
+
+    return max(width, actual_width);
+}
+
+#if 0
 
 void
 #ifdef _LIBCNT_
@@ -83,8 +501,6 @@ format_float(
     TCHAR chr,
     unsigned int flags,
     int precision,
-    TCHAR **string,
-    const TCHAR **prefix,
     va_list *argptr)
 {
     static const TCHAR digits_l[] = _T("0123456789abcdef0x");
@@ -94,7 +510,8 @@ format_float(
     const TCHAR *digits = digits_l;
     int exponent = 0, sign;
     long double fpval, fpval2;
-    int padding = 0, num_digits, val32, base = 10;
+    int num_digits, val32, base = 10;
+    int padding = 0;
 
     /* Normalize the precision */
     if (precision < 0) precision = 6;
@@ -149,15 +566,15 @@ format_float(
             num_digits = 3;
             while (num_digits--)
             {
-                *--(*string) = digits[val32 % 10];
+                exp_string[num_digits + 1] = digits[val32 % 10];
                 val32 /= 10;
             }
 
             /* Sign for the exponent */
-            *--(*string) = exponent >= 0 ? _T('+') : _T('-');
+            exp_string[1] = exponent >= 0 ? _T('+') : _T('-');
 
             /* Add 'e' or 'E' separator */
-            *--(*string) = digits[0xe];
+            exp_string[0] = digits[0xe];
             break;
 
         case _T('A'):
@@ -198,14 +615,11 @@ format_float(
     }
     else
     {
-        /* Zero padding */
-        while (padding-- > 0) *--(*string) = _T('0');
-
         /* Digits after the decimal point */
         num_digits = precision;
         while (num_digits-- > 0)
         {
-            *--(*string) = digits[(unsigned __int64)fpval2 % 10];
+            *--(*string) = digits[(unsigned __int64)fpval2 % base];
             fpval2 /= base;
         }
     }
@@ -222,98 +636,9 @@ format_float(
     while ((unsigned __int64)fpval2);
 
 }
-#endif
+#endif // ß
 
-static
-int
-streamout_char(FILE *stream, int chr)
-{
-#if !defined(_USER32_WSPRINTF)
-     if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
-        return 1;
-#endif
-#if defined(_USER32_WSPRINTF) || defined(_LIBCNT_)
-    /* Check if the buffer is full */
-    if (stream->_cnt < sizeof(TCHAR))
-        return 0;
-
-    *(TCHAR*)stream->_ptr = chr;
-    stream->_ptr += sizeof(TCHAR);
-    stream->_cnt -= sizeof(TCHAR);
-
-    return 1;
-#else
-    return _fputtc((TCHAR)chr, stream) != _TEOF;
-#endif
-}
-
-static
-int
-streamout_astring(FILE *stream, const char *string, size_t count)
-{
-    TCHAR chr;
-    int written = 0;
-
-#if !defined(_USER32_WSPRINTF)
-     if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
-        return count;
-#endif
-
-    while (count--)
-    {
-#ifdef _UNICODE
-        int len;
-        if ((len = mbtowc(&chr, string, MB_CUR_MAX)) < 1) break;
-        string += len;
-#else
-        chr = *string++;
-#endif
-        if (streamout_char(stream, chr) == 0) return -1;
-        written++;
-    }
-
-    return written;
-}
-
-static
-int
-streamout_wstring(FILE *stream, const wchar_t *string, size_t count)
-{
-    wchar_t chr;
-    int written = 0;
-
-#if defined(_UNICODE) && !defined(_USER32_WSPRINTF)
-     if ((stream->_flag & _IOSTRG) && (stream->_base == NULL))
-        return count;
-#endif
-
-    while (count--)
-    {
-#ifndef _UNICODE
-        char mbchar[MB_CUR_MAX], *ptr = mbchar;
-        int mblen;
-
-        mblen = wctomb(mbchar, *string++);
-        if (mblen <= 0) return written;
-
-        while (chr = *ptr++, mblen--)
-#else
-        chr = *string++;
-#endif
-        {
-            if (streamout_char(stream, chr) == 0) return -1;
-            written++;
-        }
-    }
-
-    return written;
-}
-
-#ifdef _UNICODE
-#define streamout_string streamout_wstring
-#else
-#define streamout_string streamout_astring
-#endif
+#endif // _USER32_WSPRINTF
 
 #ifdef _USER32_WSPRINTF
 # define USE_MULTISIZE 0
@@ -329,10 +654,11 @@ streamout(FILE *stream, const TCHAR *format, va_list argptr)
     static const TCHAR digits_u[] = _T("0123456789ABCDEF0X");
     static const char *_nullstring = "(null)";
     TCHAR buffer[BUFFER_SIZE + 1];
+    TCHAR exp_string[5];
     TCHAR chr, *string;
     STRING *nt_string;
     const TCHAR *digits, *prefix;
-    int base, fieldwidth, precision, padding;
+    int base, fieldwidth, precision, padding, rpadding = 0;
     size_t prefixlen, len;
     int written = 1, written_all = 0;
     unsigned int flags;
@@ -469,6 +795,7 @@ streamout(FILE *stream, const TCHAR *format, va_list argptr)
         /* Handle the format specifier */
         digits = digits_l;
         string = &buffer[BUFFER_SIZE];
+        exp_string[0] = 0;
         base = 10;
         prefix = 0;
         switch (chr)
@@ -558,11 +885,10 @@ streamout(FILE *stream, const TCHAR *format, va_list argptr)
 #else
                 flags &= ~FLAG_WIDECHAR;
 #endif
-                /* Use external function, one for kernel one for user mode */
-                format_float(chr, flags, precision, &string, &prefix, &argptr);
-                len = _tcslen(string);
-                precision = 0;
-                break;
+                double fpval = va_arg(argptr, double);
+                written = streamout_double(stream, chr, fpval, flags, fieldwidth, precision);
+                written_all += written;
+                continue;
 #endif
 
             case _T('d'):
@@ -679,15 +1005,13 @@ streamout(FILE *stream, const TCHAR *format, va_list argptr)
         if (written == -1) return -1;
         written_all += written;
 
-#if 0 && SUPPORT_FLOAT
         /* Optional right '0' padding */
-        while (precision-- > 0)
+        while (rpadding-- > 0)
         {
             if ((written = streamout_char(stream, _T('0'))) == 0) return -1;
             written_all += written;
             len++;
         }
-#endif
 
         /* Optional right padding */
         if (flags & FLAG_ALIGN_LEFT)
@@ -699,6 +1023,13 @@ streamout(FILE *stream, const TCHAR *format, va_list argptr)
             }
         }
 
+        /* Optional exponent */
+        const TCHAR* pexp = exp_string;
+        while(*pexp != 0)
+        {
+            if ((written = streamout_char(stream, *pexp)) == 0) return -1;
+            written_all += written;
+        }
     }
 
     if (written == -1) return -1;
