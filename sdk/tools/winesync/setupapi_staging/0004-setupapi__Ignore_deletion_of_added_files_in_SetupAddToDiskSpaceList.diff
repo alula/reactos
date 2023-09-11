@@ -1,0 +1,17 @@
+diff --git a/dll/win32/setupapi/diskspace.c b/dll/win32/setupapi/diskspace.c
+index 1b49b96..ee9fdb8 100644
+--- a/dll/win32/setupapi/diskspace.c
++++ b/dll/win32/setupapi/diskspace.c
+@@ -372,6 +372,12 @@ BOOL WINAPI SetupAddToDiskSpaceListW(HDSKSPC diskspace, PCWSTR targetfile,
+ 
+         list_add_tail(&list->files, &file->entry);
+     }
++    else if (operation == FILEOP_DELETE)
++    {
++        /* delete operations for added files are ignored */
++        ret = TRUE;
++        goto done;
++    }
+ 
+     file->operation = operation;
+     if (operation == FILEOP_COPY)
