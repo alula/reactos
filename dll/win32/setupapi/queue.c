@@ -157,8 +157,11 @@ static BOOL build_filepathsW( const struct file_op *op, FILEPATHS_W *paths )
     unsigned int src_len = 1, dst_len = 1;
     WCHAR *source = (PWSTR)paths->Source, *target = (PWSTR)paths->Target;
 
-    if (op->media) src_len += lstrlenW(op->media->root) + 1;
-    if (op->src_path) src_len += lstrlenW(op->src_path) + 1;
+    if (op->src_file[0] != '@')
+    {
+        if (op->media) src_len += lstrlenW(op->media->root) + 1;
+        if (op->src_path) src_len += lstrlenW(op->src_path) + 1;
+    }
     if (op->src_file) src_len += lstrlenW(op->src_file) + 1;
     if (op->dst_path) dst_len += lstrlenW(op->dst_path) + 1;
     if (op->dst_file) dst_len += lstrlenW(op->dst_file) + 1;
@@ -176,7 +179,10 @@ static BOOL build_filepathsW( const struct file_op *op, FILEPATHS_W *paths )
         paths->Target = target = HeapAlloc( GetProcessHeap(), 0, dst_len );
     }
     if (!source || !target) return FALSE;
-    concat_W( source, op->media ? op->media->root : NULL, op->src_path, op->src_file );
+    if (op->src_file[0] != '@')
+        concat_W( source, op->media ? op->media->root : NULL, op->src_path, op->src_file );
+    else
+        lstrcpyW( source, op->src_file );
     concat_W( target, NULL, op->dst_path, op->dst_file );
     paths->Win32Error = 0;
     paths->Flags      = 0;
