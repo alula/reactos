@@ -2607,6 +2607,11 @@ HKEY WINAPI SetupDiCreateDeviceInterfaceRegKeyA(
     return key;
 }
 
+static LONG create_iface_key(const struct device_iface *iface, REGSAM access, HKEY *key)
+{
+    return RegCreateKeyExW(iface->refstr_key, DeviceParameters, 0, NULL, 0, access, NULL, key, NULL);
+}
+
 /***********************************************************************
  *		SetupDiCreateDeviceInterfaceRegKeyW (SETUPAPI.@)
  */
