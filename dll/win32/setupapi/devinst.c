@@ -6355,7 +6355,7 @@ BOOL WINAPI SetupDiSelectBestCompatDrv(HDEVINFO devinfo, SP_DEVINFO_DATA *device
  */
 BOOL WINAPI SetupDiInstallDriverFiles(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
 {
-    WCHAR section[LINE_LEN], section_ext[LINE_LEN];
+    WCHAR section[LINE_LEN], section_ext[LINE_LEN], iface_section[LINE_LEN];
     struct device *device;
     struct driver *driver;
     void *callback_ctx;
@@ -6382,8 +6382,20 @@ BOOL WINAPI SetupDiInstallDriverFiles(HDEVINFO devinfo, SP_DEVINFO_DATA *device_
     SetupDiGetActualSectionToInstallW(hinf, section, section_ext, ARRAY_SIZE(section_ext), NULL, NULL);
 
     callback_ctx = SetupInitDefaultQueueCallback(NULL);
+
     SetupInstallFromInfSectionW(NULL, hinf, section_ext, SPINST_FILES, NULL, NULL,
             SP_COPY_NEWER_ONLY, SetupDefaultQueueCallbackW, callback_ctx, NULL, NULL);
+
+    lstrcatW(section_ext, dotInterfaces);
+    if (SetupFindFirstLineW(hinf, section_ext, AddInterface, &ctx))
+    {
+        do {
+            SetupGetStringFieldW(&ctx, 3, iface_section, ARRAY_SIZE(iface_section), NULL);
+            SetupInstallFromInfSectionW(NULL, hinf, iface_section, SPINST_FILES, NULL, NULL,
+                    SP_COPY_NEWER_ONLY, SetupDefaultQueueCallbackW, callback_ctx, NULL, NULL);
+        } while (SetupFindNextMatchLineW(&ctx, AddInterface, &ctx));
+    }
+
     SetupTermDefaultQueueCallback(callback_ctx);
 
     SetupCloseInfFile(hinf);
