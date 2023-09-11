@@ -6359,6 +6359,8 @@ BOOL WINAPI SetupDiEnumDriverInfoA(HDEVINFO devinfo, SP_DEVINFO_DATA *device_dat
 BOOL WINAPI SetupDiSelectBestCompatDrv(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
 {
     struct device *device;
+    struct driver *best;
+    DWORD i;
 
     TRACE("devinfo %p, device_data %p.\n", devinfo, device_data);
 
@@ -6372,10 +6374,17 @@ BOOL WINAPI SetupDiSelectBestCompatDrv(HDEVINFO devinfo, SP_DEVINFO_DATA *device
         return FALSE;
     }
 
-    WARN("Semi-stub, selecting the first available driver.\n");
+    best = device->drivers;
+    for (i = 1; i < device->driver_count; ++i)
+    {
+        if (device->drivers[i].rank >= best->rank) continue;
+        best = device->drivers + i;
+    }
 
-    device->selected_driver = &device->drivers[0];
+    TRACE("selected driver: rank %#x manufacturer %s, desc %s.\n",
+            best->rank, debugstr_w(best->manufacturer), debugstr_w(best->description));
 
+    device->selected_driver = best;
     return TRUE;
 }
 
