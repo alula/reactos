@@ -59,7 +59,9 @@ struct file_queue
     struct file_op_queue copy_queue;
     struct file_op_queue delete_queue;
     struct file_op_queue rename_queue;
-    DWORD                flags;
+    DWORD flags;
+    struct source_media **sources;
+    unsigned int source_count;
 };
 
 
@@ -152,7 +154,7 @@ static BOOL build_filepathsW( const struct file_op *op, FILEPATHS_W *paths )
     unsigned int src_len = 1, dst_len = 1;
     WCHAR *source = (PWSTR)paths->Source, *target = (PWSTR)paths->Target;
 
-    if (op->src_root) src_len += strlenW(op->src_root) + 1;
+    if (op->media) src_len += strlenW(op->media->root) + 1;
     if (op->src_path) src_len += strlenW(op->src_path) + 1;
     if (op->src_file) src_len += strlenW(op->src_file) + 1;
     if (op->dst_path) dst_len += strlenW(op->dst_path) + 1;
@@ -171,7 +173,7 @@ static BOOL build_filepathsW( const struct file_op *op, FILEPATHS_W *paths )
         paths->Target = target = HeapAlloc( GetProcessHeap(), 0, dst_len );
     }
     if (!source || !target) return FALSE;
-    concat_W( source, op->src_root, op->src_path, op->src_file );
+    concat_W( source, op->media ? op->media->root : NULL, op->src_path, op->src_file );
     concat_W( target, NULL, op->dst_path, op->dst_file );
     paths->Win32Error = 0;
     paths->Flags      = 0;
@@ -504,10 +506,18 @@ HSPFILEQ WINAPI SetupOpenFileQueue(void)
 BOOL WINAPI SetupCloseFileQueue( HSPFILEQ handle )
 {
     struct file_queue *queue = handle;
+    unsigned int i;
 
     free_file_op_queue( &queue->copy_queue );
     free_file_op_queue( &queue->rename_queue );
     free_file_op_queue( &queue->delete_queue );
+    for (i = 0; i < queue->source_count; ++i)
+    {
+        heap_free( queue->sources[i]->desc );
+        heap_free( queue->sources[i]->tag );
+        heap_free( queue->sources[i] );
+    }
+    heap_free( queue->sources );
     HeapFree( GetProcessHeap(), 0, queue );
     return TRUE;
 }
@@ -537,10 +547,13 @@ BOOL WINAPI SetupQueueCopyIndirectA( PSP_FILE_COPY_PARAMS_A params )
     if (params->LayoutInf)
         FIXME("Unhandled LayoutInf %p.\n", params->LayoutInf);
 
+    op->media = get_source_media( queue, params->SourceRootPath ? params->SourceRootPath : emptyW,
+                                  params->SourceDescription, params->SourceTagfile );
+
     TRACE( "root=%s path=%s file=%s -> dir=%s file=%s  descr=%s tag=%s\n",
-           debugstr_w(op->src_root), debugstr_w(op->src_path), debugstr_w(op->src_file),
+           debugstr_w(op->media->root), debugstr_w(op->src_path), debugstr_w(op->src_file),
            debugstr_w(op->dst_path), debugstr_w(op->dst_file),
-           debugstr_w(op->src_descr), debugstr_w(op->src_tag) );
+           debugstr_w(op->media->desc), debugstr_w(op->media->tag) );
 
     queue_file_op( &queue->copy_queue, op );
     return TRUE;
