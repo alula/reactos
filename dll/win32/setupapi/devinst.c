@@ -3787,7 +3787,7 @@ BOOL WINAPI SetupDiOpenDeviceInfoW(HDEVINFO devinfo, PCWSTR instance_id, HWND hw
                                    PSP_DEVINFO_DATA device_data)
 {
     struct DeviceInfoSet *set;
-    struct device *device = NULL, *enum_device;
+    struct device *device;
     WCHAR classW[40];
     GUID guid;
     HKEY enumKey = NULL;
@@ -3837,17 +3837,7 @@ BOOL WINAPI SetupDiOpenDeviceInfoW(HDEVINFO devinfo, PCWSTR instance_id, HWND hw
         goto done;
     }
 
-    /* If current set already contains a same instance, don't create new ones */
-    LIST_FOR_EACH_ENTRY(enum_device, &set->devices, struct device, entry)
-    {
-        if (!strcmpiW(instance_id, enum_device->instanceId))
-        {
-            device = enum_device;
-            break;
-        }
-    }
-
-    if (!device && !(device = SETUPDI_CreateDeviceInfo(set, &guid, instance_id, FALSE)))
+    if (!(device = create_device(set, &guid, instance_id, FALSE)))
         goto done;
 
     if (!device_data || device_data->cbSize == sizeof(SP_DEVINFO_DATA))
