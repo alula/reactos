@@ -209,17 +209,11 @@ static BOOL rename_files_callback( HINF hinf, PCWSTR field, void *arg )
  */
 static HKEY get_root_key( const WCHAR *name, HKEY def_root )
 {
-    static const WCHAR HKCR[] = {'H','K','C','R',0};
-    static const WCHAR HKCU[] = {'H','K','C','U',0};
-    static const WCHAR HKLM[] = {'H','K','L','M',0};
-    static const WCHAR HKU[]  = {'H','K','U',0};
-    static const WCHAR HKR[]  = {'H','K','R',0};
-
-    if (!wcsicmp( name, HKCR )) return HKEY_CLASSES_ROOT;
-    if (!wcsicmp( name, HKCU )) return HKEY_CURRENT_USER;
-    if (!wcsicmp( name, HKLM )) return HKEY_LOCAL_MACHINE;
-    if (!wcsicmp( name, HKU )) return HKEY_USERS;
-    if (!wcsicmp( name, HKR )) return def_root;
+    if (!wcsicmp( name, L"HKCR" )) return HKEY_CLASSES_ROOT;
+    if (!wcsicmp( name, L"HKCU" )) return HKEY_CURRENT_USER;
+    if (!wcsicmp( name, L"HKLM" )) return HKEY_LOCAL_MACHINE;
+    if (!wcsicmp( name, L"HKU" )) return HKEY_USERS;
+    if (!wcsicmp( name, L"HKR" )) return def_root;
     return 0;
 }
 
@@ -360,7 +354,6 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
     if (!(flags & FLG_ADDREG_BINVALUETYPE) ||
         (type == REG_DWORD && SetupGetFieldCount(context) == 5))
     {
-        static const WCHAR empty;
         WCHAR *str = NULL;
 
         if (type == REG_MULTI_SZ)
@@ -400,7 +393,7 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
         {
             TRACE( "setting value %s to %s\n", debugstr_w(value), debugstr_w(str) );
             if (str) RegSetValueExW( hkey, value, 0, type, (BYTE *)str, size * sizeof(WCHAR) );
-            else RegSetValueExW( hkey, value, 0, type, (const BYTE *)&empty, sizeof(WCHAR) );
+            else RegSetValueExW( hkey, value, 0, type, (const BYTE *)L"", sizeof(WCHAR) );
         }
         HeapFree( GetProcessHeap(), 0, str );
         return TRUE;
@@ -1255,7 +1248,7 @@ BOOL WINAPI SetupInstallFilesFromInfSectionW( HINF hinf, HINF hlayout, HSPFILEQ 
     info.src_root   = src_root;
     info.copy_flags = flags;
     info.layout     = hlayout;
-    return iterate_section_fields( hinf, section, CopyFiles, copy_files_callback, &info );
+    return iterate_section_fields( hinf, section, L"CopyFiles", copy_files_callback, &info );
 }
 
 
@@ -1439,25 +1432,25 @@ BOOL WINAPI SetupInstallFromInfSectionW( HWND owner, HINF hinf, PCWSTR section, 
 
         info.default_root = key_root;
         info.delete = TRUE;
-        if (!iterate_section_fields( hinf, section, DelReg, registry_callback, &info ))
+        if (!iterate_section_fields( hinf, section, L"DelReg", registry_callback, &info ))
             return FALSE;
         info.delete = FALSE;
-        if (!iterate_section_fields( hinf, section, AddReg, registry_callback, &info ))
+        if (!iterate_section_fields( hinf, section, L"AddReg", registry_callback, &info ))
             return FALSE;
     }
     if (flags & SPINST_BITREG)
     {
-        if (!iterate_section_fields( hinf, section, BitReg, bitreg_callback, NULL ))
+        if (!iterate_section_fields( hinf, section, L"BitReg", bitreg_callback, NULL ))
             return FALSE;
     }
     if (flags & SPINST_PROFILEITEMS)
     {
-        if (!iterate_section_fields( hinf, section, ProfileItems, profile_items_callback, NULL ))
+        if (!iterate_section_fields( hinf, section, L"ProfileItems", profile_items_callback, NULL ))
             return FALSE;
     }
     if (flags & SPINST_COPYINF)
     {
-        if (!iterate_section_fields( hinf, section, CopyINF, copy_inf_callback, NULL ))
+        if (!iterate_section_fields( hinf, section, L"CopyINF", copy_inf_callback, NULL ))
             return FALSE;
     }
 

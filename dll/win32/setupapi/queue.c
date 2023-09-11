@@ -373,21 +373,16 @@ static void get_src_file_info( HINF hinf, struct file_op *op )
 static void get_source_info( HINF hinf, const WCHAR *src_file, SP_FILE_COPY_PARAMS_W *params,
                              WCHAR *src_root, WCHAR *src_path)
 {
-    static const WCHAR SourceDisksNames[] =
-        {'S','o','u','r','c','e','D','i','s','k','s','N','a','m','e','s',0};
-    static const WCHAR SourceDisksFiles[] =
-        {'S','o','u','r','c','e','D','i','s','k','s','F','i','l','e','s',0};
-
     INFCONTEXT file_ctx, disk_ctx;
     INT id, diskid;
     DWORD len;
 
     /* find the SourceDisksFiles entry */
-    if (!SetupFindFirstLineW( hinf, SourceDisksFiles, src_file, &file_ctx )) return;
+    if (!SetupFindFirstLineW( hinf, L"SourceDisksFiles", src_file, &file_ctx )) return;
     if (!SetupGetIntField( &file_ctx, 1, &diskid )) return;
 
     /* now find the diskid in the SourceDisksNames section */
-    if (!SetupFindFirstLineW( hinf, SourceDisksNames, NULL, &disk_ctx )) return;
+    if (!SetupFindFirstLineW( hinf, L"SourceDisksNames", NULL, &disk_ctx )) return;
     for (;;)
     {
         if (SetupGetIntField( &disk_ctx, 0, &id ) && (id == diskid)) break;
@@ -405,7 +400,7 @@ static void get_source_info( HINF hinf, const WCHAR *src_file, SP_FILE_COPY_PARA
     if (SetupGetStringFieldW( &disk_ctx, 4, NULL, 0, &len ) && len > sizeof(WCHAR)
             && len < MAX_PATH - lstrlenW( src_root ) - 1)
     {
-        lstrcatW( src_root, backslashW );
+        lstrcatW( src_root, L"\\" );
         SetupGetStringFieldW( &disk_ctx, 4, src_root + lstrlenW( src_root ),
                               MAX_PATH - lstrlenW( src_root ), NULL );
     }
@@ -580,7 +575,7 @@ BOOL WINAPI SetupQueueCopyIndirectA( PSP_FILE_COPY_PARAMS_A params )
     if (params->LayoutInf)
         FIXME("Unhandled LayoutInf %p.\n", params->LayoutInf);
 
-    op->media = get_source_media( queue, params->SourceRootPath ? params->SourceRootPath : emptyW,
+    op->media = get_source_media( queue, params->SourceRootPath ? params->SourceRootPath : L"",
                                   params->SourceDescription, params->SourceTagfile );
 
     TRACE( "root=%s path=%s file=%s -> dir=%s file=%s  descr=%s tag=%s\n",
@@ -1253,11 +1248,9 @@ static BOOL do_file_copyW( LPCWSTR source, LPCWSTR target, DWORD style,
 
             if (ret)
             {
-                ret = VerQueryValueW(VersionSource, SubBlock,
-                                    (LPVOID*)&SourceInfo, &length);
+                ret = VerQueryValueW(VersionSource, L"\\", (LPVOID*)&SourceInfo, &length);
                 if (ret)
-                    ret = VerQueryValueW(VersionTarget, SubBlock,
-                                         (LPVOID*)&TargetInfo, &length);
+                    ret = VerQueryValueW(VersionTarget, L"\\", (LPVOID*)&TargetInfo, &length);
 
                 if (ret)
                 {
@@ -1417,7 +1410,7 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
         if ((dest_dir = get_destination_dir( hinf, NULL )))
         {
             lstrcpyW( dest_path, dest_dir );
-            lstrcatW( dest_path, backslashW );
+            lstrcatW( dest_path, L"\\" );
             heap_free( dest_dir );
         }
     }
