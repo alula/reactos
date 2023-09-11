@@ -389,7 +389,7 @@ BOOL WINAPI SetupGetSourceFileLocationW( HINF hinf, PINFCONTEXT context, PCWSTR 
     if (!(source_id_str = get_source_id( hinf, context, filename )))
         return FALSE;
 
-    *source_id = strtolW( source_id_str, &end, 10 );
+    *source_id = wcstol( source_id_str, &end, 10 );
     if (end == source_id_str || *end)
     {
         HeapFree( GetProcessHeap(), 0, source_id_str );
@@ -587,7 +587,7 @@ BOOL WINAPI SetupGetTargetPathW( HINF hinf, PINFCONTEXT context, PCWSTR section,
         GetSystemDirectoryW( systemdir, MAX_PATH );
         dir = systemdir;
     }
-    size = strlenW( dir ) + 1;
+    size = lstrlenW( dir ) + 1;
     if (required_size) *required_size = size;
 
     if (buffer)
@@ -685,11 +685,11 @@ BOOL WINAPI SetupQueryInfOriginalFileInformationW(
      * destination (copied) inf file, not the source (original) inf file.
      * to fix it properly would require building a .pnf file */
     /* file name is stored in VersionData field of InfInformation */
-    inf_name = strrchrW(inf_path, '\\');
+    inf_name = wcsrchr(inf_path, '\\');
     if (inf_name) inf_name++;
     else inf_name = inf_path;
 
-    strcpyW(OriginalFileInfo->OriginalInfName, inf_name);
+    lstrcpyW(OriginalFileInfo->OriginalInfName, inf_name);
 
     return TRUE;
 }

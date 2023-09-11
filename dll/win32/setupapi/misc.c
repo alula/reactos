@@ -205,7 +205,7 @@ LPWSTR WINAPI pSetupDuplicateString(LPCWSTR lpSrc)
     if (lpDst == NULL)
         return NULL;
 
-    strcpyW(lpDst, lpSrc);
+    lstrcpyW(lpDst, lpSrc);
 
     return lpDst;
 }
@@ -1629,7 +1629,7 @@ static UINT CALLBACK decompress_or_copy_callback( PVOID context, UINT notificati
 
         TRACE("Requesting extraction of cabinet file %s\n",
               wine_dbgstr_w(info->NameInCabinet));
-        strcpyW( info->FullTargetName, context_info->target );
+        lstrcpyW( info->FullTargetName, context_info->target );
         context_info->has_extracted = TRUE;
         return FILEOP_DOIT;
     }

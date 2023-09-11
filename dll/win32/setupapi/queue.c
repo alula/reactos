@@ -126,8 +126,8 @@ static void concat_W( WCHAR *buffer, const WCHAR *src1, const WCHAR *src2, const
     *buffer = 0;
     if (src1 && *src1)
     {
-        strcpyW( buffer, src1 );
-        buffer += strlenW(buffer );
+        lstrcpyW( buffer, src1 );
+        buffer += lstrlenW(buffer );
         if (buffer[-1] != '\\') *buffer++ = '\\';
         *buffer = 0;
         if (src2) while (*src2 == '\\') src2++;
@@ -135,15 +135,15 @@ static void concat_W( WCHAR *buffer, const WCHAR *src1, const WCHAR *src2, const
 
     if (src2)
     {
-        strcpyW( buffer, src2 );
-        buffer += strlenW(buffer );
+        lstrcpyW( buffer, src2 );
+        buffer += lstrlenW(buffer );
         if (buffer[-1] != '\\') *buffer++ = '\\';
         *buffer = 0;
         if (src3) while (*src3 == '\\') src3++;
     }
 
     if (src3)
-        strcpyW( buffer, src3 );
+        lstrcpyW( buffer, src3 );
 }
 
 
@@ -157,11 +157,11 @@ static BOOL build_filepathsW( const struct file_op *op, FILEPATHS_W *paths )
     unsigned int src_len = 1, dst_len = 1;
     WCHAR *source = (PWSTR)paths->Source, *target = (PWSTR)paths->Target;
 
-    if (op->media) src_len += strlenW(op->media->root) + 1;
-    if (op->src_path) src_len += strlenW(op->src_path) + 1;
-    if (op->src_file) src_len += strlenW(op->src_file) + 1;
-    if (op->dst_path) dst_len += strlenW(op->dst_path) + 1;
-    if (op->dst_file) dst_len += strlenW(op->dst_file) + 1;
+    if (op->media) src_len += lstrlenW(op->media->root) + 1;
+    if (op->src_path) src_len += lstrlenW(op->src_path) + 1;
+    if (op->src_file) src_len += lstrlenW(op->src_file) + 1;
+    if (op->dst_path) dst_len += lstrlenW(op->dst_path) + 1;
+    if (op->dst_file) dst_len += lstrlenW(op->dst_file) + 1;
     src_len *= sizeof(WCHAR);
     dst_len *= sizeof(WCHAR);
 
@@ -403,11 +403,11 @@ static void get_source_info( HINF hinf, const WCHAR *src_file, SP_FILE_COPY_PARA
         SetupGetStringFieldW( &disk_ctx, 2, (WCHAR *)params->SourceTagfile, len, NULL );
 
     if (SetupGetStringFieldW( &disk_ctx, 4, NULL, 0, &len ) && len > sizeof(WCHAR)
-            && len < MAX_PATH - strlenW( src_root ) - 1)
+            && len < MAX_PATH - lstrlenW( src_root ) - 1)
     {
-        strcatW( src_root, backslashW );
-        SetupGetStringFieldW( &disk_ctx, 4, src_root + strlenW( src_root ),
-                              MAX_PATH - strlenW( src_root ), NULL );
+        lstrcatW( src_root, backslashW );
+        SetupGetStringFieldW( &disk_ctx, 4, src_root + lstrlenW( src_root ),
+                              MAX_PATH - lstrlenW( src_root ), NULL );
     }
 
     if (SetupGetStringFieldW( &file_ctx, 2, NULL, 0, &len ) && len > sizeof(WCHAR) && len < MAX_PATH)
@@ -450,7 +450,7 @@ static UINT WINAPI extract_cab_cb( void *arg, UINT message, UINT_PTR param1, UIN
         FILE_IN_CABINET_INFO_W *info = (FILE_IN_CABINET_INFO_W *)param1;
         const WCHAR *filename;
 
-        if ((filename = strrchrW( info->NameInCabinet, '\\' )))
+        if ((filename = wcsrchr( info->NameInCabinet, '\\' )))
             filename++;
         else
             filename = info->NameInCabinet;
@@ -469,7 +469,7 @@ static UINT WINAPI extract_cab_cb( void *arg, UINT message, UINT_PTR param1, UIN
     case SPFILENOTIFY_NEEDNEWCABINET:
     {
         const CABINET_INFO_W *info = (const CABINET_INFO_W *)param1;
-        strcpyW( (WCHAR *)param2, info->CabinetPath );
+        lstrcpyW( (WCHAR *)param2, info->CabinetPath );
         return ERROR_SUCCESS;
     }
     case SPFILENOTIFY_CABINETINFO:
@@ -731,7 +731,7 @@ BOOL WINAPI SetupQueueDefaultCopyW( HSPFILEQ queue, HINF hinf, PCWSTR src_root, 
     params.LayoutInf          = NULL;
     params.SecurityDescriptor = NULL;
 
-    strcpyW( src_root_buffer, src_root );
+    lstrcpyW( src_root_buffer, src_root );
     src_path[0] = 0;
     if (!(params.TargetDirectory = get_destination_dir( hinf, NULL ))) return FALSE;
     get_source_info( hinf, src_file, &params, src_root_buffer, src_path );
@@ -1416,8 +1416,8 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
 
         if ((dest_dir = get_destination_dir( hinf, NULL )))
         {
-            strcpyW( dest_path, dest_dir );
-            strcatW( dest_path, backslashW );
+            lstrcpyW( dest_path, dest_dir );
+            lstrcatW( dest_path, backslashW );
             heap_free( dest_dir );
         }
     }
@@ -1427,8 +1427,8 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
         return FALSE;
     }
 
-    len = strlenW( source ) + 1;
-    if (absolute) len += strlenW( root ) + 1;
+    len = lstrlenW( source ) + 1;
+    if (absolute) len += lstrlenW( root ) + 1;
 
     if (!(p = buffer = HeapAlloc( GetProcessHeap(), 0, len * sizeof(WCHAR) )))
     {
@@ -1439,14 +1439,14 @@ BOOL WINAPI SetupInstallFileW( HINF hinf, PINFCONTEXT inf_context, PCWSTR source
 
     if (absolute)
     {
-        strcpyW( buffer, root );
-        p += strlenW( buffer );
+        lstrcpyW( buffer, root );
+        p += lstrlenW( buffer );
         if (p[-1] != '\\') *p++ = '\\';
     }
     while (*source == '\\') source++;
-    strcpyW( p, source );
+    lstrcpyW( p, source );
 
-    strcatW( dest_path, dest );
+    lstrcatW( dest_path, dest );
 
     ret = do_file_copyW( buffer, dest_path, style, handler, context );
 
@@ -1898,7 +1898,7 @@ UINT WINAPI SetupDefaultQueueCallbackW( PVOID context, UINT notification,
     {
         const SOURCE_MEDIA_W *media = (const SOURCE_MEDIA_W *)param1;
         TRACE( "need media %s %s\n", debugstr_w(media->SourcePath), debugstr_w(media->SourceFile) );
-        strcpyW( (WCHAR *)param2, media->SourcePath );
+        lstrcpyW( (WCHAR *)param2, media->SourcePath );
         return FILEOP_DOIT;
     }
     default:

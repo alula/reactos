@@ -162,8 +162,8 @@ static BOOL copy_files_callback( HINF hinf, PCWSTR field, void *arg )
 
     if (!info->src_root)
     {
-        strcpyW( src_root, PARSER_get_inf_filename( hinf ) );
-        if ((p = strrchrW( src_root, '\\' ))) *p = 0;
+        lstrcpyW( src_root, PARSER_get_inf_filename( hinf ) );
+        if ((p = wcsrchr( src_root, '\\' ))) *p = 0;
     }
 
     if (field[0] == '@')  /* special case: copy single file */
@@ -215,11 +215,11 @@ static HKEY get_root_key( const WCHAR *name, HKEY def_root )
     static const WCHAR HKU[]  = {'H','K','U',0};
     static const WCHAR HKR[]  = {'H','K','R',0};
 
-    if (!strcmpiW( name, HKCR )) return HKEY_CLASSES_ROOT;
-    if (!strcmpiW( name, HKCU )) return HKEY_CURRENT_USER;
-    if (!strcmpiW( name, HKLM )) return HKEY_LOCAL_MACHINE;
-    if (!strcmpiW( name, HKU )) return HKEY_USERS;
-    if (!strcmpiW( name, HKR )) return def_root;
+    if (!wcsicmp( name, HKCR )) return HKEY_CLASSES_ROOT;
+    if (!wcsicmp( name, HKCU )) return HKEY_CURRENT_USER;
+    if (!wcsicmp( name, HKLM )) return HKEY_LOCAL_MACHINE;
+    if (!wcsicmp( name, HKU )) return HKEY_USERS;
+    if (!wcsicmp( name, HKR )) return def_root;
     return 0;
 }
 
@@ -246,10 +246,10 @@ static void append_multi_sz_value( HKEY hkey, const WCHAR *value, const WCHAR *s
     total = size;
     while (*strings)
     {
-        int len = strlenW(strings) + 1;
+        int len = lstrlenW(strings) + 1;
 
-        for (p = buffer; *p; p += strlenW(p) + 1)
-            if (!strcmpiW( p, strings )) break;
+        for (p = buffer; *p; p += lstrlenW(p) + 1)
+            if (!wcsicmp( p, strings )) break;
 
         if (!*p)  /* not found, need to append it */
         {
@@ -288,8 +288,8 @@ static void delete_multi_sz_value( HKEY hkey, const WCHAR *value, const WCHAR *s
     dst = buffer + size;
     while (*src)
     {
-        int len = strlenW(src) + 1;
-        if (strcmpiW( src, string ))
+        int len = lstrlenW(src) + 1;
+        if (wcsicmp( src, string ))
         {
             memcpy( dst, src, len * sizeof(WCHAR) );
             dst += len;
@@ -392,7 +392,7 @@ static BOOL do_reg_operation( HKEY hkey, const WCHAR *value, INFCONTEXT *context
 
         if (type == REG_DWORD)
         {
-            DWORD dw = str ? strtoulW( str, NULL, 0 ) : 0;
+            DWORD dw = str ? wcstoul( str, NULL, 0 ) : 0;
             TRACE( "setting dword %s to %x\n", debugstr_w(value), dw );
             RegSetValueExW( hkey, value, 0, type, (BYTE *)&dw, sizeof(dw) );
         }

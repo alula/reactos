@@ -85,7 +85,7 @@ static void SETUPDI_GuidToString(const GUID *guid, LPWSTR guidStr)
         'X','%','0','2','X','%','0','2','X','%','0','2','X','%','0','2','X','%',
         '0','2','X','}',0};
 
-    sprintfW(guidStr, fmt, guid->Data1, guid->Data2, guid->Data3,
+    swprintf(guidStr, 39, fmt, guid->Data1, guid->Data2, guid->Data3,
         guid->Data4[0], guid->Data4[1], guid->Data4[2], guid->Data4[3],
         guid->Data4[4], guid->Data4[5], guid->Data4[6], guid->Data4[7]);
 }
@@ -6288,8 +6288,8 @@ BOOL WINAPI SetupDiEnumDriverInfoW(HDEVINFO devinfo, SP_DEVINFO_DATA *device_dat
     driver_data->ProviderName[0] = 0;
     if (SetupFindFirstLineW(hinf, Version, providerW, &ctx))
         SetupGetStringFieldW(&ctx, 1, driver_data->ProviderName, ARRAY_SIZE(driver_data->ProviderName), NULL);
-    strcpyW(driver_data->Description, device->drivers[index].description);
-    strcpyW(driver_data->MfgName, device->drivers[index].manufacturer);
+    lstrcpyW(driver_data->Description, device->drivers[index].description);
+    lstrcpyW(driver_data->MfgName, device->drivers[index].manufacturer);
     driver_data->DriverType = SPDIT_COMPATDRIVER;
 
     SetupCloseInfFile(hinf);
@@ -6464,14 +6464,14 @@ BOOL WINAPI SetupDiInstallDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
     SetupInstallFromInfSectionW(NULL, hinf, section_ext, install_flags, driver_key, NULL,
             SP_COPY_NEWER_ONLY, SetupDefaultQueueCallbackW, callback_ctx, NULL, NULL);
 
-    strcpyW(subsection, section_ext);
-    strcatW(subsection, dothwW);
+    lstrcpyW(subsection, section_ext);
+    lstrcatW(subsection, dothwW);
 
     SetupInstallFromInfSectionW(NULL, hinf, subsection, install_flags, device_key, NULL,
             SP_COPY_NEWER_ONLY, SetupDefaultQueueCallbackW, callback_ctx, NULL, NULL);
 
-    strcpyW(subsection, section_ext);
-    strcatW(subsection, dotservicesW);
+    lstrcpyW(subsection, section_ext);
+    lstrcatW(subsection, dotservicesW);
     SetupInstallServicesFromInfSectionW(hinf, subsection, 0);
 
     svc_name[0] = 0;
@@ -6484,7 +6484,7 @@ BOOL WINAPI SetupDiInstallDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
             if (SetupGetIntField(&ctx, 2, &flags) && (flags & SPSVCINST_ASSOCSERVICE))
             {
                 if (SetupGetStringFieldW(&ctx, 1, svc_name, ARRAY_SIZE(svc_name), NULL) && svc_name[0])
-                    RegSetValueExW(device->key, Service, 0, REG_SZ, (BYTE *)svc_name, strlenW(svc_name) * sizeof(WCHAR));
+                    RegSetValueExW(device->key, Service, 0, REG_SZ, (BYTE *)svc_name, lstrlenW(svc_name) * sizeof(WCHAR));
                 break;
             }
         } while (SetupFindNextMatchLineW(&ctx, addserviceW, &ctx));
@@ -6496,15 +6496,15 @@ BOOL WINAPI SetupDiInstallDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
     SetupCopyOEMInfW(driver->inf_path, NULL, SPOST_NONE, 0, inf_path, ARRAY_SIZE(inf_path), NULL, &filepart);
     TRACE("Copied INF file %s to %s.\n", debugstr_w(driver->inf_path), debugstr_w(inf_path));
 
-    RegSetValueExW(driver_key, infpathW, 0, REG_SZ, (BYTE *)filepart, strlenW(filepart) * sizeof(WCHAR));
-    RegSetValueExW(driver_key, infsectionW, 0, REG_SZ, (BYTE *)section, strlenW(section) * sizeof(WCHAR));
+    RegSetValueExW(driver_key, infpathW, 0, REG_SZ, (BYTE *)filepart, lstrlenW(filepart) * sizeof(WCHAR));
+    RegSetValueExW(driver_key, infsectionW, 0, REG_SZ, (BYTE *)section, lstrlenW(section) * sizeof(WCHAR));
     if (extptr)
-        RegSetValueExW(driver_key, infsectionextW, 0, REG_SZ, (BYTE *)extptr, strlenW(extptr) * sizeof(WCHAR));
+        RegSetValueExW(driver_key, infsectionextW, 0, REG_SZ, (BYTE *)extptr, lstrlenW(extptr) * sizeof(WCHAR));
 
     RegCloseKey(device_key);
     RegCloseKey(driver_key);
 
-    if (!strncmpiW(device->instanceId, rootW, strlenW(rootW)) && svc_name[0]
+    if (!wcsnicmp(device->instanceId, rootW, lstrlenW(rootW)) && svc_name[0]
             && (manager = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT)))
     {
         if ((service = OpenServiceW(manager, svc_name, SERVICE_START)))
