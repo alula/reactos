@@ -179,7 +179,7 @@ static BOOL copy_files_callback( HINF hinf, PCWSTR field, void *arg )
         }
         else
         {
-            lstrcpyW( src_root, PARSER_get_inf_filename( hinf ) );
+            get_inf_src_path( hinf, src_root );
             if ((p = wcsrchr( src_root, '\\' ))) *p = 0;
         }
     }
