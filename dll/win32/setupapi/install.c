@@ -158,11 +158,20 @@ static WCHAR *get_field_string( INFCONTEXT *context, DWORD index, WCHAR *buffer,
 static BOOL copy_files_callback( HINF hinf, PCWSTR field, void *arg )
 {
     struct files_callback_info *info = arg;
+    WCHAR src_root[MAX_PATH], *p;
+
+    if (!info->src_root)
+    {
+        strcpyW( src_root, PARSER_get_inf_filename( hinf ) );
+        if ((p = strrchrW( src_root, '\\' ))) *p = 0;
+    }
 
     if (field[0] == '@')  /* special case: copy single file */
-        SetupQueueDefaultCopyW( info->queue, info->layout ? info->layout : hinf, info->src_root, NULL, field+1, info->copy_flags );
+        SetupQueueDefaultCopyW( info->queue, info->layout ? info->layout : hinf,
+                info->src_root ? info->src_root : src_root, NULL, field+1, info->copy_flags );
     else
-        SetupQueueCopySectionW( info->queue, info->src_root, info->layout ? info->layout : hinf, hinf, field, info->copy_flags );
+        SetupQueueCopySectionW( info->queue, info->src_root ? info->src_root : src_root,
+                info->layout ? info->layout : hinf, hinf, field, info->copy_flags );
     return TRUE;
 }
 
