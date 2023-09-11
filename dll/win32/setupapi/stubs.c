@@ -43,7 +43,7 @@ INT WINAPI SetupPromptReboot( HSPFILEQ file_queue, HWND owner, BOOL scan_only )
  */
 BOOL WINAPI SetupAddToSourceListA(DWORD flags, PCSTR source)
 {
-    FIXME("0x%08x %s: stub\n", flags, debugstr_a(source));
+    FIXME("0x%08lx %s: stub\n", flags, debugstr_a(source));
     return TRUE;
 }
 
@@ -52,7 +52,7 @@ BOOL WINAPI SetupAddToSourceListA(DWORD flags, PCSTR source)
  */
 BOOL WINAPI SetupAddToSourceListW(DWORD flags, PCWSTR source)
 {
-    FIXME("0x%08x %s: stub\n", flags, debugstr_w(source));
+    FIXME("0x%08lx %s: stub\n", flags, debugstr_w(source));
     return TRUE;
 }
 
@@ -178,7 +178,7 @@ SetupDiSetDriverInstallParamsW(
  */
 CONFIGRET WINAPI CM_Request_Device_EjectA(DEVINST dev, PPNP_VETO_TYPE type, LPSTR name, ULONG length, ULONG flags)
 {
-    FIXME("(0x%08x, %p, %p, %u, 0x%08x) stub\n", dev, type, name, length, flags);
+    FIXME("(0x%08lx, %p, %p, %lu, 0x%08lx) stub\n", dev, type, name, length, flags);
     return CR_SUCCESS;
 }
 
@@ -187,6 +187,6 @@ CONFIGRET WINAPI CM_Request_Device_EjectA(DEVINST dev, PPNP_VETO_TYPE type, LPST
  */
 CONFIGRET WINAPI CM_Request_Device_EjectW(DEVINST dev, PPNP_VETO_TYPE type, LPWSTR name, ULONG length, ULONG flags)
 {
-    FIXME("(0x%08x, %p, %p, %u, 0x%08x) stub\n", dev, type, name, length, flags);
+    FIXME("(0x%08lx, %p, %p, %lu, 0x%08lx) stub\n", dev, type, name, length, flags);
     return CR_SUCCESS;
 }

@@ -1262,7 +1262,7 @@ static BOOL do_file_copyW( LPCWSTR source, LPCWSTR target, DWORD style,
                 {
                     FILEPATHS_W filepaths;
 
-                    TRACE("Versions: Source %i.%i target %i.%i\n",
+                    TRACE("Versions: Source %li.%li target %li.%li\n",
                       SourceInfo->dwFileVersionMS, SourceInfo->dwFileVersionLS,
                       TargetInfo->dwFileVersionMS, TargetInfo->dwFileVersionLS);
 
@@ -1315,7 +1315,7 @@ static BOOL do_file_copyW( LPCWSTR source, LPCWSTR target, DWORD style,
     if (style & (SP_COPY_NODECOMP | SP_COPY_LANGUAGEAWARE | SP_COPY_FORCE_IN_USE |
                  SP_COPY_NOSKIP | SP_COPY_WARNIFSKIP))
     {
-        ERR("Unsupported style(s) 0x%x\n",style);
+        ERR("Unsupported style(s) 0x%lx\n",style);
     }
 
     if (docopy)
@@ -1607,7 +1607,7 @@ BOOL WINAPI SetupScanFileQueueA( HSPFILEQ handle, DWORD flags, HWND window,
 {
     struct callback_WtoA_context ctx;
 
-    TRACE("%p %x %p %p %p %p\n", handle, flags, window, handler, context, result);
+    TRACE("%p %lx %p %p %p %p\n", handle, flags, window, handler, context, result);
 
     ctx.orig_context = context;
     ctx.orig_handler = handler;
@@ -1639,7 +1639,7 @@ BOOL WINAPI SetupScanFileQueueW( HSPFILEQ handle, DWORD flags, HWND window,
 
     if (flags & ~(SPQ_SCAN_USE_CALLBACK | SPQ_SCAN_USE_CALLBACKEX))
     {
-        FIXME("flags %x not fully implemented\n", flags);
+        FIXME("flags %lx not fully implemented\n", flags);
     }
 
     paths.Source = paths.Target = NULL;
@@ -1789,10 +1789,10 @@ UINT WINAPI SetupDefaultQueueCallbackA( PVOID context, UINT notification,
         TRACE( "end queue\n" );
         return 0;
     case SPFILENOTIFY_STARTSUBQUEUE:
-        TRACE( "start subqueue %ld count %ld\n", param1, param2 );
+        TRACE( "start subqueue %Id count %Id\n", param1, param2 );
         return TRUE;
     case SPFILENOTIFY_ENDSUBQUEUE:
-        TRACE( "end subqueue %ld\n", param1 );
+        TRACE( "end subqueue %Id\n", param1 );
         return 0;
     case SPFILENOTIFY_STARTDELETE:
         TRACE( "start delete %s\n", debugstr_a(paths->Target) );
@@ -1832,7 +1832,7 @@ UINT WINAPI SetupDefaultQueueCallbackA( PVOID context, UINT notification,
         return FILEOP_DOIT;
     }
     default:
-        FIXME( "notification %d params %lx,%lx\n", notification, param1, param2 );
+        FIXME( "notification %d params %Ix,%Ix\n", notification, param1, param2 );
         break;
     }
     return 0;
@@ -1857,10 +1857,10 @@ UINT WINAPI SetupDefaultQueueCallbackW( PVOID context, UINT notification,
         TRACE( "end queue\n" );
         return 0;
     case SPFILENOTIFY_STARTSUBQUEUE:
-        TRACE( "start subqueue %ld count %ld\n", param1, param2 );
+        TRACE( "start subqueue %Id count %Id\n", param1, param2 );
         return TRUE;
     case SPFILENOTIFY_ENDSUBQUEUE:
-        TRACE( "end subqueue %ld\n", param1 );
+        TRACE( "end subqueue %Id\n", param1 );
         return 0;
     case SPFILENOTIFY_STARTDELETE:
         TRACE( "start delete %s\n", debugstr_w(paths->Target) );
@@ -1901,7 +1901,7 @@ UINT WINAPI SetupDefaultQueueCallbackW( PVOID context, UINT notification,
         return FILEOP_DOIT;
     }
     default:
-        FIXME( "notification %d params %lx,%lx\n", notification, param1, param2 );
+        FIXME( "notification %d params %Ix,%Ix\n", notification, param1, param2 );
         break;
     }
     return 0;

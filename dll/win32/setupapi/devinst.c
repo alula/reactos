@@ -3768,7 +3768,7 @@ BOOL WINAPI SetupDiOpenDeviceInfoA(HDEVINFO devinfo, PCSTR instance_id, HWND hwn
 {
     WCHAR instance_idW[MAX_DEVICE_ID_LEN];
 
-    TRACE("%p %s %p 0x%08x %p\n", devinfo, debugstr_a(instance_id), hwnd_parent, flags, device_data);
+    TRACE("%p %s %p 0x%08lx %p\n", devinfo, debugstr_a(instance_id), hwnd_parent, flags, device_data);
 
     if (!instance_id || strlen(instance_id) >= MAX_DEVICE_ID_LEN)
     {
@@ -3796,7 +3796,7 @@ BOOL WINAPI SetupDiOpenDeviceInfoW(HDEVINFO devinfo, PCWSTR instance_id, HWND hw
     DWORD size;
     DWORD error = ERROR_NO_SUCH_DEVINST;
 
-    TRACE("%p %s %p 0x%08x %p\n", devinfo, debugstr_w(instance_id), hwnd_parent, flags, device_data);
+    TRACE("%p %s %p 0x%08lx %p\n", devinfo, debugstr_w(instance_id), hwnd_parent, flags, device_data);
 
     if (!(set = get_device_set(devinfo)))
         return FALSE;
@@ -3811,7 +3811,7 @@ BOOL WINAPI SetupDiOpenDeviceInfoW(HDEVINFO devinfo, PCWSTR instance_id, HWND hw
         FIXME("hwnd_parent unsupported\n");
 
     if (flags)
-        FIXME("flags unsupported: 0x%08x\n", flags);
+        FIXME("flags unsupported: 0x%08lx\n", flags);
 
     RegCreateKeyExW(HKEY_LOCAL_MACHINE, Enum, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &enumKey, NULL);
     /* Instance needs to be already existent in registry, if not, report ERROR_NO_SUCH_DEVINST */
@@ -4107,7 +4107,7 @@ HKEY WINAPI SetupDiOpenDeviceInterfaceRegKey(HDEVINFO devinfo, PSP_DEVICE_INTERF
     LSTATUS lr;
     HKEY key;
 
-    TRACE("devinfo %p, iface_data %p, reserved %d, access %#x.\n", devinfo, iface_data, reserved, access);
+    TRACE("devinfo %p, iface_data %p, reserved %ld, access %#lx.\n", devinfo, iface_data, reserved, access);
 
     if (!(iface = get_device_iface(devinfo, iface_data)))
         return INVALID_HANDLE_VALUE;
@@ -6315,12 +6315,12 @@ BOOL WINAPI SetupDiEnumDriverInfoW(HDEVINFO devinfo, SP_DEVINFO_DATA *device_dat
 {
     struct device *device;
 
-    TRACE("devinfo %p, device_data %p, type %#x, index %u, driver_data %p.\n",
+    TRACE("devinfo %p, device_data %p, type %#lx, index %lu, driver_data %p.\n",
             devinfo, device_data, type, index, driver_data);
 
     if (type != SPDIT_COMPATDRIVER)
     {
-        FIXME("Unhandled type %#x.\n", type);
+        FIXME("Unhandled type %#lx.\n", type);
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
         return FALSE;
     }
@@ -6381,7 +6381,7 @@ BOOL WINAPI SetupDiSelectBestCompatDrv(HDEVINFO devinfo, SP_DEVINFO_DATA *device
         best = device->drivers + i;
     }
 
-    TRACE("selected driver: rank %#x manufacturer %s, desc %s.\n",
+    TRACE("selected driver: rank %#lx manufacturer %s, desc %s.\n",
             best->rank, debugstr_w(best->manufacturer), debugstr_w(best->description));
 
     device->selected_driver = best;
@@ -6436,7 +6436,7 @@ BOOL WINAPI SetupDiGetDriverInfoDetailW(HDEVINFO devinfo, SP_DEVINFO_DATA *devic
     HANDLE file;
     HINF hinf;
 
-    TRACE("devinfo %p, device_data %p, driver_data %p, detail_data %p, size %u, ret_size %p.\n",
+    TRACE("devinfo %p, device_data %p, driver_data %p, detail_data %p, size %lu, ret_size %p.\n",
             devinfo, device_data, driver_data, detail_data, size, ret_size);
 
     if ((detail_data || size) && size < sizeof(SP_DRVINFO_DETAIL_DATA_W))
@@ -6512,7 +6512,7 @@ BOOL WINAPI SetupDiGetDriverInfoDetailA(HDEVINFO devinfo, SP_DEVINFO_DATA *devic
     HANDLE file;
     HINF hinf;
 
-    TRACE("devinfo %p, device_data %p, driver_data %p, detail_data %p, size %u, ret_size %p.\n",
+    TRACE("devinfo %p, device_data %p, driver_data %p, detail_data %p, size %lu, ret_size %p.\n",
             devinfo, device_data, driver_data, detail_data, size, ret_size);
 
     if ((detail_data || size) && size < sizeof(SP_DRVINFO_DETAIL_DATA_A))
@@ -6744,12 +6744,12 @@ BOOL WINAPI SetupDiInstallDevice(HDEVINFO devinfo, SP_DEVINFO_DATA *device_data)
 
             if (!StartServiceW(service, 0, NULL) && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING)
             {
-                ERR("Failed to start service %s for device %s, error %u.\n",
+                ERR("Failed to start service %s for device %s, error %lu.\n",
                         debugstr_w(svc_name), debugstr_w(device->instanceId), GetLastError());
             }
             if (!ControlService(service, SERVICE_CONTROL_REENUMERATE_ROOT_DEVICES, &status))
             {
-                ERR("Failed to control service %s for device %s, error %u.\n",
+                ERR("Failed to control service %s for device %s, error %lu.\n",
                         debugstr_w(svc_name), debugstr_w(device->instanceId), GetLastError());
             }
             CloseServiceHandle(service);
