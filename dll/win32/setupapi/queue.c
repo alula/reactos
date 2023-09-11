@@ -535,10 +535,7 @@ BOOL WINAPI SetupQueueCopyIndirectA( PSP_FILE_COPY_PARAMS_A params )
     /* some defaults */
     if (!op->src_file) op->src_file = op->dst_file;
     if (params->LayoutInf)
-    {
-        get_src_file_info( params->LayoutInf, op );
-        if (!op->dst_path) op->dst_path = get_destination_dir( params->LayoutInf, op->dst_file );
-    }
+        FIXME("Unhandled LayoutInf %p.\n", params->LayoutInf);
 
     TRACE( "root=%s path=%s file=%s -> dir=%s file=%s  descr=%s tag=%s\n",
            debugstr_w(op->src_root), debugstr_w(op->src_path), debugstr_w(op->src_file),
