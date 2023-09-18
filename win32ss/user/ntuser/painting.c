@@ -155,7 +155,6 @@ IntSendSyncPaint(PWND Wnd, ULONG Flags)
          Message = CONTAINING_RECORD(Entry, USER_SENT_MESSAGE, ListEntry);
          do
          {
-            ERR("LOOP it\n");
             if (Message->Msg.message == WM_SYNCPAINT &&
                 Message->Msg.hwnd == UserHMGetHandle(Wnd))
             {  // Already received so exit out.
