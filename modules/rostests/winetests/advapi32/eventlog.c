@@ -913,8 +913,8 @@ static void test_readwrite(void)
     /* Read all events from our created eventlog, one by one */
     handle = OpenEventLogA(NULL, eventlogname);
     ok(handle != NULL, "Failed to open Event Log, got %d\n", GetLastError());
-    i = 0;
-    for (;;)
+
+    for (i = 0; i < _countof(read_write); i++)
     {
         void *buf;
         DWORD read, needed;
