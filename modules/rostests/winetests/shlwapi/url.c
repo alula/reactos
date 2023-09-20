@@ -1663,7 +1663,7 @@ static void test_HashData(void)
 START_TEST(url)
 {
   char *pFunc;
-
+//  __debugbreak(); seems fixed
   hShlwapi = GetModuleHandleA("shlwapi.dll");
 
   /* SHCreateStreamOnFileEx was introduced in shlwapi v6.0 */

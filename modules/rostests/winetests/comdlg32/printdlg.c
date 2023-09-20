@@ -639,7 +639,7 @@ START_TEST(printdlg)
 {
     hcomdlg32 = GetModuleHandleA("comdlg32.dll");
     pPrintDlgExW = (void *) GetProcAddress(hcomdlg32, "PrintDlgExW");
-
+    //__debugbreak();
     test_PageSetupDlgA();
     test_PrintDlgA();
     test_PrintDlgExW();

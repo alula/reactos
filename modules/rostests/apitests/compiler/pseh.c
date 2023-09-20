@@ -190,7 +190,7 @@ DEFINE_TEST(test_execute_handler_2)
 	static int ret;
 
 	ret = return_zero();
-
+    //__debugbreak(); // this bypasses the handler and goes to processstartup filter
 	_SEH2_TRY
 	{
 		RaiseException(0xE00DEAD0, 0, 0, NULL);

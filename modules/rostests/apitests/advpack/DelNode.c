@@ -395,6 +395,7 @@ static void Test_DelNodeA(void)
 {
     DWORD attr;
     size_t i;
+    //__debugbreak(); seems to work
 
     if (!GetCurrentDirectoryA(_countof(s_cur_dir_A), s_cur_dir_A))
     {
@@ -564,7 +565,7 @@ START_TEST(DelNode)
     s_pDelNodeA = (DELNODEA)GetProcAddress(s_hAdvPack, "DelNodeA");
     if (s_pDelNodeA)
     {
-        Test_DelNodeA();
+        Test_DelNodeA(); // here
     }
     else
     {

@@ -4074,6 +4074,7 @@ START_TEST(cert)
     testLinkCert();
 
     testCryptHashCert();
+    //__debugbreak();
     testCertSigs();
     testSignAndEncodeCert();
     testCreateSelfSignCert();

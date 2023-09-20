@@ -451,12 +451,17 @@ static void test_exception(void)
   if (p__RTtypeid && !bAncientVersion)
   {
     /* Check the rtti */
+      //__debugbreak(); // this creates a broken type_info object
     type_info *ti = p__RTtypeid(&e);
     ok (ti && !strcmp(ti->mangled, ".?AVexception@@"), "bad rtti for e\n");
 
     if (ti)
     {
       /* Check the returned type_info has rtti too */
+      //__debugbreak(); // the next one excepts in the __TRY and __EXCEPT throws again
+      // MSVCRT___RTtypeid
+      // -> get_obj_locator
+      // -> const vtable_ptr *vtable = get_vtable( cppobj ); returns broken vtable
       type_info *ti2 = p__RTtypeid(ti);
       ok (ti2 != NULL && !strcmp(ti2->mangled, ".?AVtype_info@@"), "bad rtti for e's type_info\n");
     }
@@ -1348,7 +1353,6 @@ START_TEST(cpp)
 {
   if (!InitFunctionPtrs())
     return;
-
   test_exception();
   test_bad_typeid();
   test_bad_cast();

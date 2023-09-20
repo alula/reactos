@@ -2951,6 +2951,7 @@ static void test__atodbl(void)
     num[0] = 0;
     ret = p__atodbl_l(&d, num, NULL);
     ok(ret == 0, "_atodbl_l(&d, \"\", NULL) returned %d, expected 0\n", ret);
+    //__debugbreak();
     ok(d.x == 0, "d.x = %lf, expected 0\n", d.x);
     ret = _atodbl(&d, num);
     ok(ret == 0, "_atodbl(&d, \"\") returned %d, expected 0\n", ret);
@@ -3861,7 +3862,7 @@ START_TEST(string)
     char mem[100];
     static const char xilstring[]="c:/xilinx";
     int nLen;
-
+    //__debugbreak();
     hMsvcrt = GetModuleHandleA("msvcrt.dll");
     if (!hMsvcrt)
         hMsvcrt = GetModuleHandleA("msvcrtd.dll");
@@ -3923,7 +3924,7 @@ START_TEST(string)
     p__memicmp = (void*)GetProcAddress(hMsvcrt, "_memicmp");
     p__memicmp_l = (void*)GetProcAddress(hMsvcrt, "_memicmp_l");
     p___strncnt = (void*)GetProcAddress(hMsvcrt, "__strncnt");
-
+    //__debugbreak();
     /* MSVCRT memcpy behaves like memmove for overlapping moves,
        MFC42 CString::Insert seems to rely on that behaviour */
     strcpy(mem,xilstring);

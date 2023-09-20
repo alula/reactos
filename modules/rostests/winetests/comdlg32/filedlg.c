@@ -841,7 +841,7 @@ static void test_arrange(void)
         ofn.lCustData = i;
         ofn.Flags = OFN_ENABLEHOOK | OFN_EXPLORER| OFN_ENABLETEMPLATEHANDLE | OFN_HIDEREADONLY |
             arrange_tests[i].ofnflags;
-        template->cdit = arrange_tests[i].nrcontrols;
+        template->cdit = arrange_tests[i].nrcontrols; // here!
         template->x = arrange_tests[i].poszDlg.x;
         template->y = arrange_tests[i].poszDlg.y;
         template->cx = arrange_tests[i].poszDlg.cx;

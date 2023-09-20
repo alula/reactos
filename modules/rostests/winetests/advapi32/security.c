@@ -8149,6 +8149,7 @@ START_TEST(security)
             test_process_security_child();
         return;
     }
+    //__debugbreak(); // FIXED?
     test_kernel_objects_security();
     test_sid();
     test_trustee();

@@ -2377,7 +2377,7 @@ START_TEST(info)
 
     trace("Starting test_queryvirtualmemory()\n");
     test_queryvirtualmemory();
-
+    //__debugbreak(); // the next one crashes
     trace("Starting test_mapprotection()\n");
     test_mapprotection();
 

@@ -2927,6 +2927,11 @@ static void pagesetup_set_devmode(pagesetup_data *data, DEVMODEW *dm)
     else
     {
         dmA = convert_to_devmodeA(dm);
+        //if (!dmA)
+        //{
+        //    __debugbreak();
+        //    dmA = convert_to_devmodeA(dm);
+        //}
         size = dmA->dmSize + dmA->dmDriverExtra;
         src = dmA;
     }
@@ -3081,7 +3086,7 @@ static BOOL pagesetup_change_printer(LPWSTR name, pagesetup_data *data)
         goto end;
     }
     ClosePrinter(hprn);
-
+    //__debugbreak(); // lpDevMode not set up properly in next call. Should fail here?
     needed = DocumentPropertiesW(0, 0, name, NULL, NULL, 0);
     if(needed == -1)
     {

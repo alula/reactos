@@ -4931,7 +4931,7 @@ START_TEST(chain)
     pCertFreeCertificateChain = (void*)GetProcAddress(hCrypt32, "CertFreeCertificateChain");
     pCertFreeCertificateChainEngine = (void*)GetProcAddress(hCrypt32, "CertFreeCertificateChainEngine");
     pCertVerifyCertificateChainPolicy = (void*)GetProcAddress(hCrypt32, "CertVerifyCertificateChainPolicy");
-
+    //__debugbreak(); seems to work
     testCreateCertChainEngine();
     if (!pCertGetCertificateChain || !pCertFreeCertificateChain)
     {

@@ -271,7 +271,12 @@ static void run_userhandling_tests(void)
 
     usri.usri1_name = sTestUserName;
     usri.usri1_password = sTooLongPassword;
-
+    //__debugbreak(); // next one crashes
+    // -> netapi32!NetUserAdd
+    // -> netapi32!SetUserInfo
+    // -> netapi32!GetUserDacl
+    //   -> RtlGetDaclSecurityDescriptor returnss Present = 1 and SamDacl = NULL
+    // -> RtlQueryInformationAcl with Acl == NULL
     ret = pNetUserAdd(NULL, 1, (LPBYTE)&usri, NULL);
     ok(ret == NERR_PasswordTooShort || ret == ERROR_ACCESS_DENIED /* Win2003 */,
        "Adding user with too long password returned 0x%08x\n", ret);
@@ -727,6 +732,7 @@ START_TEST(access)
     }
 
     if (init_access_tests()) {
+        //__debugbreak(); // next one crashes
         run_userhandling_tests();
         run_usergetinfo_tests();
         run_querydisplayinformation1_tests();
