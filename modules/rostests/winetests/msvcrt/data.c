@@ -155,7 +155,9 @@ static void test___getmainargs(void)
         ok(new_argv == argv, "*__p___argv() = %p, expected %p\n", new_argv, argv);
     }
     else skip("__p___argc or __p___argv is not available\n");
-
+#if defined(__REACTOS__) && defined(_M_AMD64)
+    return; // There is no __p___argc on x64!
+#endif
     mode = 0;
     __getmainargs(&argc, &argv, &envp, 1, &mode);
     ok(argc == 5, "argc = %d\n", argc);
