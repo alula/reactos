@@ -253,6 +253,8 @@ Enable this if the module uses typeid or dynamic_cast. You will probably need to
             add_compile_definitions(_M_AMD64)
         endif()
         add_definitions(-D_AMD64_ -D__x86_64__ -D_WIN64)
+        # Short string optimization is broken and causes memory corruption
+        add_definitions(-D_STLP_DONT_USE_SHORT_STRING_OPTIM)
     elseif(ARCH STREQUAL "arm")
         # _M_ARM is already defined by toolchain
         add_definitions(-D_ARM_ -D__arm__ -DWIN32)
