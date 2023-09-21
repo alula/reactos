@@ -2728,7 +2728,7 @@ START_TEST(dde)
     STARTUPINFOA startup;
     PROCESS_INFORMATION proc;
     DWORD dde_inst = 0xdeadbeef;
-
+    //__debugbreak(); // crashes somewhere
     argc = winetest_get_mainargs(&argv);
     if (argc == 3)
     {
@@ -2788,6 +2788,7 @@ START_TEST(dde)
     }
     else
     {
+        __debugbreak();
         sprintf(buffer, "%s dde endw", argv[0]);
         CreateProcessA(NULL, buffer, NULL, NULL, FALSE,
                        CREATE_SUSPENDED, NULL, NULL, &startup, &proc);

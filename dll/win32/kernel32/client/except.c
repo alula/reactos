@@ -89,6 +89,7 @@ _dump_context(PCONTEXT pc)
 #endif
 }
 
+// why is this duplicated in RTL?
 static VOID
 PrintStackTrace(IN PEXCEPTION_POINTERS ExceptionInfo)
 {
@@ -96,7 +97,7 @@ PrintStackTrace(IN PEXCEPTION_POINTERS ExceptionInfo)
     CHAR szMod[128] = "", *szModFile;
     PEXCEPTION_RECORD ExceptionRecord = ExceptionInfo->ExceptionRecord;
     PCONTEXT ContextRecord = ExceptionInfo->ContextRecord;
-
+    __debugbreak();
     /* Print a stack trace */
     DbgPrint("Unhandled exception\n");
     DbgPrint("ExceptionCode:    %8x\n", ExceptionRecord->ExceptionCode);

@@ -19,6 +19,7 @@ IopLockFileObject(
     if (InterlockedExchange((PLONG)&FileObject->Busy, TRUE) == FALSE)
     {
         ObReferenceObject(FileObject);
+        FileObject->LastLock = PsGetCurrentThread();
         return STATUS_SUCCESS;
     }
     else

@@ -2647,7 +2647,8 @@ START_TEST(file)
     test_tmpnam();
     test_get_osfhandle();
     test_setmaxstdio();
-    test_pipes(arg_v[0]);
+    __debugbreak();
+    test_pipes(arg_v[0]); // this one sometimes hangs
     test_stdin();
     test_mktemp();
     test__open_osfhandle();

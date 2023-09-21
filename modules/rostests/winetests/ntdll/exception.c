@@ -2825,7 +2825,7 @@ START_TEST(exception)
                                                                  "RtlUnwindEx" );
     p_setjmp                           = (void *)GetProcAddress( hmsvcrt,
                                                                  "_setjmp" );
-
+    __debugbreak();
     test_debug_registers();
     test_outputdebugstring(1);
     test_ripevent(1);

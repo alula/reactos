@@ -11620,7 +11620,8 @@ START_TEST( sock )
     test_WSASendTo();
     test_WSARecv();
     test_WSAPoll();
-    test_write_watch();
+    //__debugbreak(); in PR already by doug
+    test_write_watch(); // here
     test_iocp();
 
     test_events(0);

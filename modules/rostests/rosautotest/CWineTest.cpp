@@ -328,6 +328,7 @@ CWineTest::RunTest(CTestInfo* TestInfo)
             else if (dwReadResult == WAIT_TIMEOUT)
             {
                 // The process activity timeout above has elapsed without any new data.
+                //__debugbreak();// this seems to cause memory corruption, seemingly fixed
                 TESTEXCEPTION("Timeout while waiting for the test process\n");
             }
             else
