@@ -803,10 +803,22 @@ _Node_alloc_obj* __node_alloc_impl::_S_chunks  = 0;
 #endif
 
 void * _STLP_CALL __node_alloc::_M_allocate(size_t& __n)
-{ return __node_alloc_impl::_M_allocate(__n); }
+{
+#if 1
+    return malloc(__n);
+#else
+    __node_alloc_impl::check_free_list(); return __node_alloc_impl::_M_allocate(__n);
+#endif
+}
 
 void _STLP_CALL __node_alloc::_M_deallocate(void *__p, size_t __n)
-{ __node_alloc_impl::_M_deallocate(__p, __n); }
+{
+#if 1
+    free(__p);
+#else
+    __node_alloc_impl::check_free_list(); __node_alloc_impl::_M_deallocate(__p, __n);
+#endif
+}
 
 #if defined (_STLP_PTHREADS) && !defined (_STLP_NO_THREADS)
 
