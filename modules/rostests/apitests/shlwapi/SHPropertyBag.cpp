@@ -166,7 +166,6 @@ static void SHPropertyBag_ReadTest(void)
     POINTS pts = { 0x2222, 0x3333 };
     RECTL rcl = { 123, 456, 789, 101112 };
     GUID guid = { 0 };
-    __debugbreak(); // Broken and reproducable
 
     ResetTest(VT_BOOL, L"BOOL1");
     hr = SHPropertyBag_ReadBOOL(&dummy, s_pszPropNames[0], &bValue);

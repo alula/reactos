@@ -2161,7 +2161,7 @@ static void test_bsc_marshaling(void)
     thread_ready = CreateEventW(NULL, TRUE, FALSE, NULL);
     thread = CreateThread(NULL, 0, bsc_thread, stream, 0, NULL);
     WaitForSingleObject(thread_ready, INFINITE);
-    __debugbreak(); // next one fails
+
     hres = CoUnmarshalInterface(stream, &IID_IBindStatusCallback, (void**)&bsc);
     ok(hres == S_OK, "CoUnmarshalInterface failed: %08x\n", hres);
 
@@ -2208,7 +2208,7 @@ static void test_bsc_marshaling(void)
     rem_bindinfo.dwReserved = 18;
     rem_bindinfo.stgmedData.pUnkForRelease = &unk_out.IUnknown_iface;
     unk_out.ref = 1;
-    __debugbreak();
+
     hres = IBindStatusCallback_GetBindInfo(bsc, &bindf, &bindinfo);
     ok(hres == S_OK, "GetBindInfo failed: %08x\n", hres);
     ok(bindf == rem_bindf, "bindf = %x, expected %x\n", bindf, rem_bindf);
@@ -2715,7 +2715,7 @@ START_TEST(misc)
         test_user_agent();
         test_MkParseDisplayNameEx();
         test_IsValidURL();
-        test_bsc_marshaling(); // here
+        test_bsc_marshaling();
     }
 
     test_internet_features();

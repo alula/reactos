@@ -398,8 +398,8 @@ static void test_request_groups(DWORD instance, HCONV hconv)
     char programs[MAX_PATH];
     WIN32_FIND_DATAA finddata;
     HANDLE hfind;
-    __debugbreak();
-    list = dde_request(instance, hconv, "Groups"); // fails
+
+    list = dde_request(instance, hconv, "Groups");
     ok(list != NULL, "request failed: %u\n", DdeGetLastError(instance));
     strcpy(programs, ProgramsDir);
     strcat(programs, "/*");

@@ -2476,7 +2476,6 @@ IopAcquireFileObjectLock(
     InterlockedDecrement((PLONG)&FileObject->Waiters);
     if (Status == STATUS_SUCCESS)
     {
-        FileObject->LastLock = PsGetCurrentThread();
         ObReferenceObject(FileObject);
         *LockFailed = FALSE;
     }

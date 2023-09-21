@@ -3003,19 +3003,6 @@ static void test_Device(void)
     ok(hr == DD_OK, "Cannot set HWnd to Clipper (hr = %x)\n", hr);
 
     memcpy(&driver, &IID_IDirect3DRGBDevice, sizeof(GUID));
-    __debugbreak(); // next one fails
-    // -> d3drm1_CreateDeviceFromClipper
-    //   -> d3drm_device_init
-    //     -> IDirectDrawSurface_GetAttachedSurface(surface, &caps, &ds); fails (ok?)
-    //     -> if (create_z_surface) { ...
-    //       IDirectDraw_CreateSurface(ddraw, &surface_desc, &ds, NULL); fails
-    //       == ddraw1_CreateSurface
-    //         -> ddraw_surface_create
-    //           -> wined3d_texture_create
-    //             -> texture_init
-    //               -> wined3d_cs_init_object(device->cs, texture2d_create_dc, surface);
-    //               -> device->cs->ops->finish(device->cs, WINED3D_CS_QUEUE_DEFAULT);
-    //               -> surface->dc is NULL
     hr = IDirect3DRM3_CreateDeviceFromClipper(d3drm, pClipper, &driver, rc.right, rc.bottom, &device);
     ok(hr == D3DRM_OK, "Cannot get IDirect3DRMDevice interface (hr = %x)\n", hr);
 

@@ -1400,8 +1400,7 @@ START_TEST(devinst)
     test_register_device_iface();
     test_registry_property_a();
     test_registry_property_w();
-__debugbreak();
-    test_get_inf_class(); // here!
+    test_get_inf_class();
     testSetupDiGetClassDevsA();
     test_devnode();
     test_device_interface_key();
