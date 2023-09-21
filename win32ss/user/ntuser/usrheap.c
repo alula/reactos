@@ -165,9 +165,7 @@ IntUserHeapCreate(IN PVOID SectionObject,
 
     pHeap = RtlCreateHeap(
 #if DBG /* Enable checks on debug builds */
-                          HEAP_FREE_CHECKING_ENABLED |
-                          HEAP_TAIL_CHECKING_ENABLED |
-                          HEAP_CAPTURE_STACK_BACKTRACES |
+                          HEAP_FREE_CHECKING_ENABLED | HEAP_TAIL_CHECKING_ENABLED |
 #endif
                           HEAP_ZERO_MEMORY | HEAP_NO_SERIALIZE,
                           *SystemMappedBase,

@@ -254,6 +254,10 @@ struct _Node_alloc_obj {
 };
 #endif
 
+#ifdef _DEBUG
+#error 123
+#endif
+
 class __node_alloc_impl {
   static inline size_t _STLP_CALL _S_round_up(size_t __bytes)
   { return (((__bytes) + (size_t)_ALIGN-1) & ~((size_t)_ALIGN - 1)); }
