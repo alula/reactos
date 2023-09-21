@@ -53,6 +53,10 @@ extern "C" {
 }
 #endif
 
+#ifndef _STLP_THREADS
+#error _STLP_THREADS not defined
+#endif
+
 // Specialised debug form of new operator which does not provide "false"
 // memory leaks when run with debug CRT libraries.
 #if defined (_STLP_MSVC) && (_STLP_MSVC >= 1020 && defined (_STLP_DEBUG_ALLOC)) && !defined (_STLP_WCE)
@@ -176,6 +180,8 @@ __oom_handler_type _STLP_CALL __malloc_alloc::set_malloc_handler(__oom_handler_t
 //    information that we can return the object to the proper free list
 //    without permanently losing part of the object.
 //
+//#undef _MAX_BYTES
+//#define _MAX_BYTES 0
 
 #define _STLP_NFREELISTS 16
 
@@ -188,6 +194,11 @@ __oom_handler_type _STLP_CALL __malloc_alloc::set_malloc_handler(__oom_handler_t
  * of a cleaning process much more complicated.
  */
 #  define _STLP_DO_CLEAN_NODE_ALLOC
+#endif
+
+#if defined(_STLP_HAS_ATOMIC_FREELIST)
+#define _STLP_HAS_ATOMIC_FREELIST ddd
+#error _STLP_HAS_ATOMIC_FREELIST
 #endif
 
 /* When STLport is used without multi threaded safety we use the node allocator
@@ -278,6 +289,32 @@ private:
   static size_t _S_heap_size;
 #endif
 
+public: static void check_free_list()
+{
+#if 0
+    int depth;
+    for (int i = 0; i < _STLP_NFREELISTS; i++)
+    {
+        depth = 0;
+        _Obj** list = &_S_free_list[i];
+        _Obj* head = *list;
+        _Obj* entry = head;
+        while (entry != 0)
+        {
+            const char* ptr = (const char*)&entry;
+            if (ptr[7] != 0)
+            {
+                __debugbreak();
+            }
+            entry = entry->_M_next;
+            depth++;
+            if (depth > 10000) __debugbreak();
+            if (entry == head) __debugbreak();
+        }
+    }
+#endif
+}
+
 #if defined (_STLP_USE_LOCK_FREE_IMPLEMENTATION)
   // List of blocks of free memory
   static _STLP_atomic_freelist  _S_free_mem_blocks;
@@ -316,6 +353,7 @@ public:
 
 #if !defined (_STLP_USE_LOCK_FREE_IMPLEMENTATION)
 void* __node_alloc_impl::_M_allocate(size_t& __n) {
+  check_free_list();
   __n = _S_round_up(__n);
   _Obj * _STLP_VOLATILE * __my_free_list = _S_free_list + _S_FREELIST_INDEX(__n);
   _Obj *__r;
@@ -334,6 +372,7 @@ void* __node_alloc_impl::_M_allocate(size_t& __n) {
   _S_alloc_call();
 #  endif
   // lock is released here
+  check_free_list();
   return __r;
 }
 
@@ -343,12 +382,16 @@ void __node_alloc_impl::_M_deallocate(void *__p, size_t __n) {
 
   // acquire lock
   _Node_Alloc_Lock __lock_instance;
+
+  //if (__pobj->_M_next != 0) __debugbreak();
+
   __pobj->_M_next = *__my_free_list;
   *__my_free_list = __pobj;
 
 #  if defined (_STLP_DO_CLEAN_NODE_ALLOC)
   _S_dealloc_call();
 #  endif
+  check_free_list();
   // lock is released here
 }
 
@@ -371,6 +414,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
     if (__bytes_left >= __total_bytes) {
       __result = _S_start_free;
       _S_start_free += __total_bytes;
+      check_free_list();
       return __result;
     }
 
@@ -379,6 +423,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
       __total_bytes = _p_size * __nobjs;
       __result = _S_start_free;
       _S_start_free += __total_bytes;
+      check_free_list();
       return __result;
     }
 
@@ -408,6 +453,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
         *__my_free_list = __p -> _M_next;
         _S_start_free = __REINTERPRET_CAST(char*, __p);
         _S_end_free = _S_start_free + __i;
+        check_free_list();
         return _S_chunk_alloc(_p_size, __nobjs);
         // Any leftover piece will eventually make it to the
         // right free list.
@@ -425,6 +471,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
 #  endif
   _S_end_free = _S_start_free + __bytes_to_get;
   _S_start_free += _STLP_OFFSET;
+  check_free_list();
   return _S_chunk_alloc(_p_size, __nobjs);
 }
 
@@ -451,17 +498,21 @@ _Node_alloc_obj* __node_alloc_impl::_S_refill(size_t __n) {
     __current_obj->_M_next = __next_obj;
   }
   __next_obj->_M_next = 0;
+  check_free_list();
   return __result;
 }
 
 #  if defined (_STLP_DO_CLEAN_NODE_ALLOC)
 void __node_alloc_impl::_S_alloc_call()
-{ ++_S_alloc_counter(); }
+{ ++_S_alloc_counter();
+    check_free_list();
+}
 
 void __node_alloc_impl::_S_dealloc_call() {
   __stl_atomic_t &counter = _S_alloc_counter();
   if (--counter == 0)
-  { _S_chunk_dealloc(); }
+  { _S_chunk_dealloc(); check_free_list();}
+  check_free_list();
 }
 
 /* We deallocate all the memory chunks      */
@@ -476,11 +527,13 @@ void __node_alloc_impl::_S_chunk_dealloc() {
   _S_start_free = _S_end_free = 0;
   _S_heap_size = 0;
   memset(__REINTERPRET_CAST(char*, __CONST_CAST(_Obj**, &_S_free_list[0])), 0, _STLP_NFREELISTS * sizeof(_Obj*));
+  check_free_list();
 }
 #  endif
 
 #else
 
+static
 void* __node_alloc_impl::_M_allocate(size_t& __n) {
   __n = _S_round_up(__n);
   _Obj* __r = _S_free_list[_S_FREELIST_INDEX(__n)].pop();
@@ -490,6 +543,7 @@ void* __node_alloc_impl::_M_allocate(size_t& __n) {
 #  if defined (_STLP_DO_CLEAN_NODE_ALLOC)
   _S_alloc_call();
 #  endif
+  check_free_list();
   return __r;
 }
 
@@ -499,6 +553,7 @@ void __node_alloc_impl::_M_deallocate(void *__p, size_t __n) {
 #  if defined (_STLP_DO_CLEAN_NODE_ALLOC)
   _S_dealloc_call();
 #  endif
+  check_free_list();
 }
 
 /* Returns an object of size __n, and optionally adds additional ones to    */
@@ -509,7 +564,10 @@ __node_alloc_impl::_Obj* __node_alloc_impl::_S_refill(size_t __n) {
   char* __chunk = _S_chunk_alloc(__n, __nobjs);
 
   if (__nobjs <= 1)
-    return __REINTERPRET_CAST(_Obj*, __chunk);
+  {
+      check_free_list();
+      return __REINTERPRET_CAST(_Obj*, __chunk);
+  }
 
   // Push all new nodes (minus first one) onto freelist
   _Obj* __result   = __REINTERPRET_CAST(_Obj*, __chunk);
@@ -519,6 +577,7 @@ __node_alloc_impl::_Obj* __node_alloc_impl::_S_refill(size_t __n) {
     __cur_item  = __REINTERPRET_CAST(_Obj*, __REINTERPRET_CAST(char*, __cur_item) + __n);
     __my_freelist->push(__cur_item);
   }
+  check_free_list();
   return __result;
 }
 
@@ -608,6 +667,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
           if (__rounded_down > 0) {
             _S_free_list[_S_FREELIST_INDEX(__rounded_down)].push(__REINTERPRET_CAST(_Obj*, __REINTERPRET_CAST(char*, __p) + __total_bytes));
           }
+          check_free_list();
           return __REINTERPRET_CAST(char*, __p);
         }
         else {
@@ -646,6 +706,7 @@ char* __node_alloc_impl::_S_chunk_alloc(size_t _p_size, int& __nobjs) {
     __freeblock->_M_end  = __result + __bytes_to_get;
     _S_free_mem_blocks.push(__freeblock);
   }
+  check_free_list();
   return __result;
 }
 
@@ -684,6 +745,7 @@ void __node_alloc_impl::_S_chunk_dealloc() {
     __stlp_delete_chunck(__chunk);
     __chunk  = __next;
   }
+  check_free_list();
 }
 #  endif
 
@@ -703,6 +765,7 @@ __stl_atomic_t& _STLP_CALL
 __node_alloc_impl::_S_alloc_counter() {
   static _AllocCounter _S_counter = 1;
   static __node_alloc_cleaner _S_node_alloc_cleaner;
+  check_free_list();
   return _S_counter;
 }
 #endif
@@ -860,6 +923,7 @@ void *_Pthread_alloc_per_thread_state::_M_refill(size_t __n) {
   size_t __i;
 
   if (1 == __nobjs)  {
+      __node_alloc_impl::check_free_list();
     return __chunk;
   }
 
@@ -878,6 +942,7 @@ void *_Pthread_alloc_per_thread_state::_M_refill(size_t __n) {
       __current_obj -> __free_list_link = __next_obj;
     }
   }
+  __node_alloc_impl::check_free_list();
   return __result;
 }
 
@@ -886,6 +951,7 @@ void _Pthread_alloc_impl::_S_destructor(void *__instance) {
   _Pthread_alloc_per_thread_state* __s = (_Pthread_alloc_per_thread_state*)__instance;
   __s -> __next = _S_free_per_thread_states;
   _S_free_per_thread_states = __s;
+  __node_alloc_impl::check_free_list();
 }
 
 _Pthread_alloc_per_thread_state* _Pthread_alloc_impl::_S_new_per_thread_state() {
@@ -893,9 +959,11 @@ _Pthread_alloc_per_thread_state* _Pthread_alloc_impl::_S_new_per_thread_state() 
   if (0 != _S_free_per_thread_states) {
     _Pthread_alloc_per_thread_state *__result = _S_free_per_thread_states;
     _S_free_per_thread_states = _S_free_per_thread_states -> __next;
+    __node_alloc_impl::check_free_list();
     return __result;
   }
   else {
+      __node_alloc_impl::check_free_list();
     return new _Pthread_alloc_per_thread_state;
   }
 }
@@ -926,6 +994,7 @@ _Pthread_alloc_per_thread_state* _Pthread_alloc_impl::_S_get_per_thread_state() 
       _STLP_ABORT();
     }
   }
+  __node_alloc_impl::check_free_list();
   return __result;
 }
 
@@ -946,12 +1015,14 @@ char *_Pthread_alloc_impl::_S_chunk_alloc(size_t __p_size, size_t &__nobjs, _Pth
     if (__bytes_left >= __total_bytes) {
       __result = _S_start_free;
       _S_start_free += __total_bytes;
+      __node_alloc_impl::check_free_list();
       return __result;
     } else if (__bytes_left >= __p_size) {
       __nobjs = __bytes_left/__p_size;
       __total_bytes = __p_size * __nobjs;
       __result = _S_start_free;
       _S_start_free += __total_bytes;
+      __node_alloc_impl::check_free_list();
       return __result;
     } else {
       size_t __bytes_to_get = 2 * __total_bytes + _S_round_up(_S_heap_size);
@@ -982,6 +1053,7 @@ char *_Pthread_alloc_impl::_S_chunk_alloc(size_t __p_size, size_t &__nobjs, _Pth
     }
   }
   // lock is released here
+  __node_alloc_impl::check_free_list();
   return _S_chunk_alloc(__p_size, __nobjs, __a);
 }
 
@@ -994,6 +1066,7 @@ void *_Pthread_alloc_impl::allocate(size_t& __n) {
   __state_type* __a;
 
   if (__n > _MAX_BYTES) {
+      __node_alloc_impl::check_free_list();
     return __malloc_alloc::allocate(__n);
   }
 
@@ -1004,9 +1077,11 @@ void *_Pthread_alloc_impl::allocate(size_t& __n) {
   __result = *__my_free_list;
   if (__result == 0) {
     void *__r = __a->_M_refill(__n);
+    __node_alloc_impl::check_free_list();
     return __r;
   }
   *__my_free_list = __result->__free_list_link;
+  __node_alloc_impl::check_free_list();
   return __result;
 };
 
@@ -1019,6 +1094,7 @@ void _Pthread_alloc_impl::deallocate(void *__p, size_t __n) {
 
   if (__n > _MAX_BYTES) {
       __malloc_alloc::deallocate(__p, __n);
+      __node_alloc_impl::check_free_list();
       return;
   }
 
@@ -1027,6 +1103,7 @@ void _Pthread_alloc_impl::deallocate(void *__p, size_t __n) {
   __my_free_list = __a->__free_list + _S_freelist_index(__n);
   __q -> __free_list_link = *__my_free_list;
   *__my_free_list = __q;
+  __node_alloc_impl::check_free_list();
 }
 
 // boris : versions for per_thread_allocator
@@ -1037,6 +1114,7 @@ void *_Pthread_alloc_impl::allocate(size_t& __n, __state_type* __a) {
   __obj * __result;
 
   if (__n > _MAX_BYTES) {
+      __node_alloc_impl::check_free_list();
     return __malloc_alloc::allocate(__n);
   }
   __n = _S_round_up(__n);
@@ -1049,9 +1127,11 @@ void *_Pthread_alloc_impl::allocate(size_t& __n, __state_type* __a) {
   __result = *__my_free_list;
   if (__result == 0) {
     void *__r = __a->_M_refill(__n);
+    __node_alloc_impl::check_free_list();
     return __r;
   }
   *__my_free_list = __result->__free_list_link;
+  __node_alloc_impl::check_free_list();
   return __result;
 };
 
@@ -1063,6 +1143,7 @@ void _Pthread_alloc_impl::deallocate(void *__p, size_t __n, __state_type* __a) {
 
   if (__n > _MAX_BYTES) {
     __malloc_alloc::deallocate(__p, __n);
+    __node_alloc_impl::check_free_list();
     return;
   }
 
@@ -1080,6 +1161,7 @@ void *_Pthread_alloc_impl::reallocate(void *__p, size_t __old_sz, size_t& __new_
   size_t __copy_sz;
 
   if (__old_sz > _MAX_BYTES && __new_sz > _MAX_BYTES) {
+      __node_alloc_impl::check_free_list();
     return realloc(__p, __new_sz);
   }
 
@@ -1088,6 +1170,7 @@ void *_Pthread_alloc_impl::reallocate(void *__p, size_t __old_sz, size_t& __new_
   __copy_sz = __new_sz > __old_sz? __old_sz : __new_sz;
   memcpy(__result, __p, __copy_sz);
   deallocate(__p, __old_sz);
+  __node_alloc_impl::check_free_list();
   return __result;
 }
 
