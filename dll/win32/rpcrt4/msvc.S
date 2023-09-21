@@ -97,7 +97,7 @@ FUNC call_server_func
     mov rdx, [rsp + 8]
     mov r8, [rsp + 16]
     mov r9, [rsp + 24]
-    movd xmm0, rcx
+    movq xmm0, rcx
     movd xmm1, rdx
     movd xmm2, r8
     movd xmm3, r9
