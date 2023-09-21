@@ -19,6 +19,8 @@
 #ifndef _STLP_LOCK_FREE_SLIST_H
 #define _STLP_LOCK_FREE_SLIST_H
 
+#if 0
+
 #if defined(_STLP_PTHREADS)
 #  include <pthread.h>
 
@@ -304,4 +306,5 @@ private:
 
 #endif
 
+#endif // 0
 #endif /* _STLP_LOCK_FREE_SLIST_H */
