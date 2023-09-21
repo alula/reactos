@@ -21,6 +21,8 @@ int __cdecl _CrtDbgReport(int reportType, const char *filename, int linenumber, 
 int __cdecl _CrtDbgReportW(int reportType, const wchar_t *filename, int linenumber, const wchar_t *moduleName, const wchar_t *format, ...);
 }
 
+#define _CrtDbgReport(...) ((void)0)
+
 namespace ATL
 {
 

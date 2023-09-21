@@ -93,7 +93,7 @@ extern "C" {
 
 // Assertion and error reporting
 
-#ifndef _DEBUG
+#ifndef _DEBUGl
 
     #define _CrtDbgBreak() ((void)0)
 
