@@ -627,7 +627,7 @@ BOOL WINAPI SetupQueueCopyIndirectW( PSP_FILE_COPY_PARAMS_W params )
 #endif
 
     /* some defaults */
-    if (!op->src_file) op->src_file = op->dst_file;
+    if (!op->dst_file) op->dst_file = op->src_file;
     if (params->LayoutInf)
     {
         get_src_file_info( params->LayoutInf, op );
