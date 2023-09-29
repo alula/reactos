@@ -1595,6 +1595,7 @@ BOOL WINAPI SetupCommitFileQueueW( HWND owner, HSPFILEQ handle, PSP_FILE_CALLBAC
                                      (UINT_PTR)&paths, (UINT_PTR)newpath );
                 if (op_result == FILEOP_ABORT) goto done;
             }
+#ifdef __REACTOS__
             if (op->dst_sd)
             {
                 PSID psidOwner = NULL, psidGroup = NULL;
@@ -1614,6 +1615,7 @@ BOOL WINAPI SetupCommitFileQueueW( HWND owner, HSPFILEQ handle, PSP_FILE_CALLBAC
                     psidOwner, psidGroup, pDacl, pSacl );
                 /* Yes, ignore the return code... */
             }
+#endif // __REACTOS__
             handler( context, SPFILENOTIFY_ENDCOPY, (UINT_PTR)&paths, 0 );
         }
         handler( context, SPFILENOTIFY_ENDSUBQUEUE, FILEOP_COPY, 0 );
